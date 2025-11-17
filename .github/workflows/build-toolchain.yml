@@ -30,7 +30,7 @@ jobs:
   build:
     name: ${{ inputs.preset }}${{ inputs.tools && '+t' || '' }}${{ inputs.extras && '+e' || '' }}
     runs-on: windows-2022
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       VCPKG_FILE_CACHE: ${{ github.workspace }}\vcpkg-bincache
       VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}\vcpkg-bincache,readwrite

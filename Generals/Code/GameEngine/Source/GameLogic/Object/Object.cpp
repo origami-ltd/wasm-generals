@@ -2921,7 +2921,7 @@ Bool Object::isAbleToAttack() const
 			{
 				//The turret is enable, meaning we have an enabled weapon. Quit.
 				anyEnabled = TRUE;
-				break;;
+				break;
 			}
 		}
 		if( anyWeapon && !anyEnabled )

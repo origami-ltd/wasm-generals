@@ -732,9 +732,9 @@ Int Object::getTransportSlotCount() const
 	return count;
 }
 
-Object* Object::getEnclosingContainedBy()
+const Object* Object::getEnclosingContainedBy() const
 {
-	for (Object* child = this, *container = getContainedBy(); container; child = container, container = container->getContainedBy())
+	for (const Object* child = this, *container = getContainedBy(); container; child = container, container = container->getContainedBy())
 	{
 		ContainModuleInterface* containModule = container->getContain();
 		if (containModule && containModule->isEnclosingContainerFor(child))
@@ -742,6 +742,14 @@ Object* Object::getEnclosingContainedBy()
 	}
 
 	return NULL;
+}
+
+const Object* Object::getOuterObject() const
+{
+	if (const Object* enclosing = getEnclosingContainedBy())
+		return enclosing;
+
+	return this;
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -3145,10 +3153,13 @@ void Object::onVeterancyLevelChanged( VeterancyLevel oldLevel, VeterancyLevel ne
 			break;
 	}
 
+	Drawable* outerDrawable = getOuterObject()->getDrawable();
+
 	Bool doAnimation = provideFeedback
 		&& newLevel > oldLevel
 		&& !isKindOf(KINDOF_IGNORED_IN_GUI)
-		&& getDrawable()->isVisible();
+		&& outerDrawable
+		&& outerDrawable->isVisible();
 
 	if( doAnimation && TheGameLogic->getDrawIconUI() )
 	{

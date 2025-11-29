@@ -154,7 +154,7 @@ Int UDP::Bind(UnsignedInt IP,UnsignedShort Port)
   addr.sin_port=Port;
   addr.sin_addr.s_addr=IP;
   fd=socket(AF_INET,SOCK_DGRAM,DEFAULT_PROTOCOL);
-  #ifdef _WINDOWS
+  #ifdef _WIN32
   if (fd==SOCKET_ERROR)
     fd=-1;
   #endif
@@ -163,7 +163,7 @@ Int UDP::Bind(UnsignedInt IP,UnsignedShort Port)
 
   retval=bind(fd,(struct sockaddr *)&addr,sizeof(addr));
 
-  #ifdef _WINDOWS
+  #ifdef _WIN32
   if (retval==SOCKET_ERROR)
 	{
     retval=-1;
@@ -201,7 +201,7 @@ Int UDP::getLocalAddr(UnsignedInt &ip, UnsignedShort &port)
 // private function
 Int UDP::SetBlocking(Int block)
 {
-  #ifdef _WINDOWS
+  #ifdef _WIN32
    unsigned long flag=1;
    if (block)
      flag=0;
@@ -244,7 +244,7 @@ Int UDP::Write(const unsigned char *msg,UnsignedInt len,UnsignedInt IP,UnsignedS
 
   ClearStatus();
   retval=sendto(fd,(const char *)msg,len,0,(struct sockaddr *)&to,sizeof(to));
-  #ifdef _WINDOWS
+  #ifdef _WIN32
   if (retval==SOCKET_ERROR)
 	{
     retval=-1;
@@ -267,7 +267,7 @@ Int UDP::Read(unsigned char *msg,UnsignedInt len,sockaddr_in *from)
   if (from!=NULL)
   {
     retval=recvfrom(fd,(char *)msg,len,0,(struct sockaddr *)from,&alen);
-    #ifdef _WINDOWS
+    #ifdef _WIN32
     if (retval == SOCKET_ERROR)
 		{
 			if (WSAGetLastError() != WSAEWOULDBLOCK)
@@ -288,7 +288,7 @@ Int UDP::Read(unsigned char *msg,UnsignedInt len,sockaddr_in *from)
   else
   {
     retval=recvfrom(fd,(char *)msg,len,0,NULL,NULL);
-    #ifdef _WINDOWS
+    #ifdef _WIN32
     if (retval==SOCKET_ERROR)
 		{
 			if (WSAGetLastError() != WSAEWOULDBLOCK)
@@ -312,7 +312,7 @@ Int UDP::Read(unsigned char *msg,UnsignedInt len,sockaddr_in *from)
 
 void UDP::ClearStatus(void)
 {
-  #ifndef _WINDOWS
+  #ifndef _WIN32
   errno=0;
   #endif
 
@@ -322,7 +322,7 @@ void UDP::ClearStatus(void)
 UDP::sockStat UDP::GetStatus(void)
 {
 	Int status = m_lastError;
- #ifdef _WINDOWS
+ #ifdef _WIN32
   //int status=WSAGetLastError();
   switch (status) {
     case NO_ERROR:

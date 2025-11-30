@@ -395,12 +395,6 @@ void GameEngine::init()
 		// Create the low-level file system interface
 		TheFileSystem = createFileSystem();
 
-		//Kris: Patch 1.01 - November 17, 2003
-		//I was unable to resolve the RTPatch method of deleting a shipped file. English, Chinese, and Korean
-		//SKU's shipped with two INIZH.big files. One properly in the Run directory and the other in Run\INI\Data.
-		//We need to toast the latter in order for the game to patch properly.
-		DeleteFile( "Data\\INI\\INIZH.big" );
-
 		// not part of the subsystem list, because it should normally never be reset!
 		TheNameKeyGenerator = MSGNEW("GameEngineSubsystem") NameKeyGenerator;
 		TheNameKeyGenerator->init();

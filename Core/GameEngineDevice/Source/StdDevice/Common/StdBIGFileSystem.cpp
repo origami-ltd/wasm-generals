@@ -215,6 +215,16 @@ Bool StdBIGFileSystem::loadBigFilesFromDirectory(AsciiString dir, AsciiString fi
 	Bool actuallyAdded = FALSE;
 	FilenameListIter it = filenameList.begin();
 	while (it != filenameList.end()) {
+#if RTS_ZEROHOUR
+		// TheSuperHackers @bugfix bobtista 18/11/2025 Skip duplicate INIZH.big in Data\INI to prevent CRC mismatches.
+		// English, Chinese, and Korean SKUs shipped with two INIZH.big files (one in Run directory, one in Run\Data\INI).
+		// The DeleteFile cleanup doesn't work on EA App/Origin installs because the folder is not writable, so we skip loading it instead.
+		if (it->endsWithNoCase("Data\\INI\\INIZH.big") || it->endsWithNoCase("Data/INI/INIZH.big")) {
+			it++;
+			continue;
+		}
+#endif
+
 		ArchiveFile *archiveFile = openArchiveFile((*it).str());
 
 		if (archiveFile != NULL) {

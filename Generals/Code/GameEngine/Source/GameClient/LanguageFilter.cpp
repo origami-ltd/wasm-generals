@@ -35,9 +35,6 @@ LanguageFilter *TheLanguageFilter = NULL;
 
 LanguageFilter::LanguageFilter()
 {
-	//Modified by Saad
-	//Unnecessary
-	//m_wordList.clear();
 }
 
 LanguageFilter::~LanguageFilter() {

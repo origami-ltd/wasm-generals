@@ -194,7 +194,7 @@ public:
 		return(numBytes);
 	};
 	virtual void flush(void) {
-		while (m_cachedChunks.size() != 0)//!m_cachedChunks.empty())
+		while (!m_cachedChunks.empty())//!m_cachedChunks.empty())
 		{
 			CachedChunk c = m_cachedChunks.front();
 			m_cachedChunks.pop_front();
@@ -232,7 +232,7 @@ public:
 			return;
 		UnsignedByte *srcBuffer = NEW UnsignedByte[m_totalBytes];
 		UnsignedByte *insertPos = srcBuffer;
-		while (m_cachedChunks.size() != 0)
+		while (!m_cachedChunks.empty())
 		{
 			CachedChunk c = m_cachedChunks.front();
 			m_cachedChunks.pop_front();
@@ -1474,7 +1474,7 @@ Bool CWorldBuilderDoc::getAllIndexesInRect(const Coord3D* bl, const Coord3D* br,
 	FindIndexNearest(this, &center, &ndx, PREFER_BOTTOM);
 	AddUniqueAndNeighbors(this, bl, br, tl, tr, ndx, allIndices);
 
-	return (allIndices->size() > 0);
+	return (!allIndices->empty());
 }
 
 
@@ -2245,7 +2245,7 @@ void CWorldBuilderDoc::OnDumpDocToText(void)
 
 			fprintf(theLogFile, "Total Map Objects (with ThingTemplates): %d\n", totalObjectCount);
 
-			while (mapOfTemplates.size() > 0) {
+			while (!mapOfTemplates.empty()) {
 				std::map<AsciiString, Int>::iterator storedIt = mapOfTemplates.begin();
 
 				for (it = mapOfTemplates.begin(); it != mapOfTemplates.end(); ++it) {

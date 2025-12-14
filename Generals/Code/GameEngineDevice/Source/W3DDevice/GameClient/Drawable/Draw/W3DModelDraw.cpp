@@ -647,7 +647,7 @@ void ModelConditionInfo::validateCachedBones(RenderObjClass* robj, Real scale) c
 	// if we have any animations in this state, always choose the first, since the animations
 	// vary on a per-client basis.
 	HAnimClass* animToUse;
-	if (m_animations.size() > 0)
+	if (!m_animations.empty())
 	{
 		animToUse = m_animations.front().getAnimHandle();	// return an AddRef'ed handle
 	}
@@ -1601,7 +1601,7 @@ void W3DModelDrawModuleData::parseConditionState(INI* ini, void *instance, void 
 				throw INI_INVALID_DATA;
 			}
 
-			DEBUG_ASSERTCRASH(info.m_conditionsYesVec.size() == 0, ("*** ASSET ERROR: nonempty m_conditionsYesVec.size(), see srj"));
+			DEBUG_ASSERTCRASH(info.m_conditionsYesVec.empty(), ("*** ASSET ERROR: nonempty m_conditionsYesVec.size(), see srj"));
 			info.m_conditionsYesVec.clear();
 			info.m_conditionsYesVec.push_back(conditionsYes);
 		}
@@ -3750,8 +3750,8 @@ void W3DModelDraw::setAnimationLoopDuration(UnsignedInt numFrames)
 */
 void W3DModelDraw::setAnimationCompletionTime(UnsignedInt numFrames)
 {
-	if (m_curState != NULL && m_curState->m_transitionSig != NO_TRANSITION && m_curState->m_animations.size() > 0 &&
-			m_nextState != NULL && m_nextState->m_transitionSig == NO_TRANSITION && m_nextState->m_animations.size() > 0)
+	if (m_curState != NULL && m_curState->m_transitionSig != NO_TRANSITION && !m_curState->m_animations.empty() &&
+			m_nextState != NULL && m_nextState->m_transitionSig == NO_TRANSITION && !m_nextState->m_animations.empty())
 	{
 		// we have a transition; split up the time suitably.
 		// note that this is just a guess, and assumes that the states

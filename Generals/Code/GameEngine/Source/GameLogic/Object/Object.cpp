@@ -1542,6 +1542,31 @@ Color Object::getNightIndicatorColor() const
 }
 
 //=============================================================================
+// Object::isLogicallyVisible
+//=============================================================================
+Bool Object::isLogicallyVisible() const
+{
+	const Object* obj = getOuterObject();
+
+	// Disguisers are always visible to all players, irrespective of any stealth
+	// status. We thus need to check the type rather than the status as the
+	// disguise status is absent during the disguise transition phase.
+	if (obj->isKindOf(KINDOF_DISGUISER))
+		return true;
+
+	if (obj->testStatus(OBJECT_STATUS_STEALTHED) && !obj->testStatus(OBJECT_STATUS_DETECTED))
+	{
+		const Player* player = rts::getObservedOrLocalPlayer();
+		const Relationship relationship = player->getRelationship(getTeam());
+
+		if (player->isPlayerActive() && relationship != ALLIES)
+			return false;
+	}
+
+	return true;
+}
+
+//=============================================================================
 // Object::isLocallyControlled
 //=============================================================================
 Bool Object::isLocallyControlled() const
@@ -2835,13 +2860,10 @@ void Object::onVeterancyLevelChanged( VeterancyLevel oldLevel, VeterancyLevel ne
 			break;
 	}
 
-	Drawable* outerDrawable = getOuterObject()->getDrawable();
-
 	Bool doAnimation = provideFeedback
 		&& newLevel > oldLevel
 		&& !isKindOf(KINDOF_IGNORED_IN_GUI)
-		&& outerDrawable
-		&& outerDrawable->isVisible();
+		&& isLogicallyVisible();
 
 	if( doAnimation && TheGameLogic->getDrawIconUI() )
 	{

@@ -344,7 +344,7 @@ void Debug_Refs(void)
 			ActiveRefStruct * search_ref = &(search_obj->ActiveRefInfo);
 
 			if ( ref->File && search_ref->File &&
-				  !strcmp(search_ref->File, ref->File) &&
+				  strcmp(search_ref->File, ref->File) == 0 &&
 				  (search_ref->Line == ref->Line) ) {
 				count++;
 			} else if ( (ref->File == NULL) &&  (search_ref->File == NULL) ) {

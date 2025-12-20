@@ -27,7 +27,7 @@ from typing import List, Optional, Tuple, Dict
 
 
 def find_clang_tidy() -> str:
-    """Find clang-tidy executable in PATH."""
+    """Find clang-tidy executable in PATH or common locations."""
     try:
         result = subprocess.run(
             ['clang-tidy', '--version'],
@@ -40,8 +40,38 @@ def find_clang_tidy() -> str:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
+    import platform
+    if platform.system() == 'Darwin':
+        import glob
+        import re
+        possible_paths = glob.glob('/opt/homebrew/Cellar/llvm*/*/bin/clang-tidy')
+        possible_paths.extend(glob.glob('/usr/local/Cellar/llvm*/*/bin/clang-tidy'))
+
+        def extract_version(path):
+            match = re.search(r'llvm@?(\d+)', path)
+            if match:
+                return int(match.group(1))
+            match = re.search(r'/(\d+)\.(\d+)\.(\d+)', path)
+            if match:
+                return int(match.group(1)) * 10000 + int(match.group(2)) * 100 + int(match.group(3))
+            return 0
+
+        for path in sorted(possible_paths, key=extract_version, reverse=True):
+            try:
+                result = subprocess.run(
+                    [path, '--version'],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                if result.returncode == 0:
+                    return path
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                continue
+
     raise RuntimeError(
         "clang-tidy not found in PATH. Please install clang-tidy:\n"
+        "  macOS: brew install llvm\n"
         "  Windows: Install LLVM from https://llvm.org/builds/"
     )
 
@@ -54,6 +84,54 @@ def find_project_root() -> Path:
             return current
         current = current.parent
     raise RuntimeError("Could not find project root (no CMakeLists.txt found)")
+
+
+def get_clang_tidy_version(clang_tidy_exe: str) -> Optional[str]:
+    """Get the version string from clang-tidy."""
+    try:
+        result = subprocess.run(
+            [clang_tidy_exe, '--version'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def extract_llvm_version(version_string: str) -> Optional[str]:
+    """Extract LLVM version number from clang-tidy version string."""
+    import re
+    patterns = [
+        r'LLVM version (\d+\.\d+\.\d+)',
+        r'llvm version (\d+\.\d+\.\d+)',
+        r'Homebrew LLVM version (\d+\.\d+\.\d+)',
+        r'version (\d+\.\d+\.\d+)',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, version_string, re.IGNORECASE)
+        if match:
+            return match.group(1)
+    return None
+
+
+def find_clang_tidy_plugin(project_root: Path) -> Optional[str]:
+    """Find the GeneralsGameCode clang-tidy plugin."""
+    possible_paths = [
+        project_root / "scripts" / "clang-tidy-plugin" / "build" / "lib" / "libGeneralsGameCodeClangTidyPlugin.so",
+        project_root / "scripts" / "clang-tidy-plugin" / "build" / "lib" / "libGeneralsGameCodeClangTidyPlugin.dylib",
+        project_root / "scripts" / "clang-tidy-plugin" / "build" / "lib" / "libGeneralsGameCodeClangTidyPlugin.dll",
+        project_root / "scripts" / "clang-tidy-plugin" / "build" / "bin" / "libGeneralsGameCodeClangTidyPlugin.dll",
+    ]
+
+    for path in possible_paths:
+        if path.exists():
+            return str(path)
+
+    return None
 
 
 def find_compile_commands(build_dir: Optional[Path] = None) -> Path:
@@ -174,7 +252,7 @@ def _run_batch(args: Tuple) -> Tuple[int, Dict[str, List[str]]]:
 
                             if is_warning_or_error or verbose:
                                 issues_by_file[file_key].append(line)
-        
+
         return result.returncode, dict(issues_by_file)
     except FileNotFoundError:
         error_msg = "Error: clang-tidy not found. Please install LLVM/Clang."
@@ -188,7 +266,8 @@ def run_clang_tidy(source_files: List[str],
                   extra_args: List[str],
                   fix: bool = False,
                   jobs: int = 1,
-                  verbose: bool = False) -> int:
+                  verbose: bool = False,
+                  load_plugin: bool = True) -> int:
     """Run clang-tidy on source files in batches, optionally in parallel."""
     if not source_files:
         print("No source files to analyze.")
@@ -196,16 +275,40 @@ def run_clang_tidy(source_files: List[str],
 
     clang_tidy_exe = find_clang_tidy()
 
+    project_root = find_project_root()
+    plugin_path = None
+    if load_plugin:
+        plugin_path = find_clang_tidy_plugin(project_root)
+        if plugin_path:
+            clang_tidy_version_str = get_clang_tidy_version(clang_tidy_exe)
+            if clang_tidy_version_str:
+                detected_version = extract_llvm_version(clang_tidy_version_str)
+                if detected_version:
+                    if verbose:
+                        print(f"Found clang-tidy plugin: {plugin_path}")
+                        print(f"Using clang-tidy LLVM version: {detected_version}")
+                        print("Note: Ensure the plugin was built with the same LLVM version (check CMake build output).\n")
+                    else:
+                        print(f"Note: Verify plugin was built with LLVM {detected_version} (check CMake build output)")
+                else:
+                    if verbose:
+                        print(f"Found clang-tidy plugin: {plugin_path}\n")
+            else:
+                if verbose:
+                    print(f"Found clang-tidy plugin: {plugin_path}\n")
+
     BATCH_SIZE = 50
     total_files = len(source_files)
     batches = [source_files[i:i + BATCH_SIZE] for i in range(0, total_files, BATCH_SIZE)]
 
-    project_root = find_project_root()
     compile_commands_dir = compile_commands_path.parent
 
     all_issues = defaultdict(list)
     files_with_issues = set()
     total_issues = 0
+
+    if plugin_path and '-load' not in ' '.join(extra_args):
+        extra_args = ['-load', plugin_path] + extra_args
 
     if jobs > 1:
         if verbose:
@@ -232,7 +335,7 @@ def run_clang_tidy(source_files: List[str],
                         all_issues[file_path].extend(file_issues)
                         files_with_issues.add(file_path)
                         total_issues += len(file_issues)
-            
+
             if not verbose:
                 print(" done.")
         except KeyboardInterrupt:
@@ -249,7 +352,7 @@ def run_clang_tidy(source_files: List[str],
             try:
                 if verbose:
                     print(f"Batch {batch_num}/{len(batches)}: {len(batch)} file(s)...")
-                
+
                 returncode, issues = _run_batch((batch_num, batch, compile_commands_dir, fix, extra_args, project_root, clang_tidy_exe, verbose))
                 if returncode != 0:
                     overall_returncode = returncode
@@ -259,7 +362,7 @@ def run_clang_tidy(source_files: List[str],
                         all_issues[file_path].extend(file_issues)
                         files_with_issues.add(file_path)
                         total_issues += len(file_issues)
-                
+
                 if not verbose and batch_num < len(batches):
                     print('.', end='', flush=True)
             except KeyboardInterrupt:
@@ -277,7 +380,7 @@ def run_clang_tidy(source_files: List[str],
             print(f"\n{file_path}:")
             for issue in all_issues[file_path]:
                 print(f"  {issue}")
-    
+
     return overall_returncode
 
 
@@ -356,6 +459,12 @@ Note: Requires a PCH-free build. Create with:
     )
 
     parser.add_argument(
+        '--no-plugin',
+        action='store_true',
+        help='Do not automatically load the GeneralsGameCode clang-tidy plugin'
+    )
+
+    parser.add_argument(
         'clang_tidy_args',
         nargs='*',
         help='Additional arguments to pass to clang-tidy, or specific files to analyze (if files are provided, --include/--exclude are ignored)'
@@ -390,7 +499,8 @@ Note: Requires a PCH-free build. Create with:
                 clang_tidy_args,
                 args.fix,
                 args.jobs,
-                args.verbose
+                args.verbose,
+                load_plugin=not args.no_plugin
             )
 
         compile_commands = load_compile_commands(compile_commands_path)
@@ -423,7 +533,8 @@ Note: Requires a PCH-free build. Create with:
             clang_tidy_args,
             args.fix,
             args.jobs,
-            args.verbose
+            args.verbose,
+            load_plugin=not args.no_plugin
         )
 
     except Exception as e:

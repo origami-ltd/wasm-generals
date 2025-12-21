@@ -62,6 +62,7 @@ enum GameMode CPP_11(: Int);
 
 enum MouseButtonState CPP_11(: Int)
 {
+	MBS_None = -1,
 	MBS_Up = 0,
 	MBS_Down,
 	MBS_DoubleClick,
@@ -105,17 +106,14 @@ struct MouseIO
 								 user while - is down/toward user */
 	ICoord2D deltaPos;  ///< overall change in mouse pointer this frame
 
-	MouseButtonState leftState;					// button state: Up, Down, DoubleClick (Which is also down)
+	MouseButtonState leftState;					// button state: None (no event), Up, Down, DoubleClick
 	Int leftEvent;											// Most important event this frame
-	Int leftFrame;											// last frame button state changed
 
 	MouseButtonState rightState;
 	Int rightEvent;
-	Int rightFrame;
 
 	MouseButtonState middleState;
 	Int middleEvent;
-	Int middleFrame;
 };
 
 class CursorInfo
@@ -392,9 +390,6 @@ protected:
 	Int m_maxX;							///< mouse is locked to this region
 	Int m_minY;							///< mouse is locked to this region
 	Int m_maxY;							///< mouse is locked to this region
-
-	UnsignedInt m_inputFrame;				///< frame input was gathered on
-	UnsignedInt m_deadInputFrame;		///< Frame which last input occured
 
 	Bool m_inputMovesAbsolute;			/**< if TRUE, when processing mouse position
 																	chanages the movement will be done treating

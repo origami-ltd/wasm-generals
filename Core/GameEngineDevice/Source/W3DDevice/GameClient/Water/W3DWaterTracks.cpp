@@ -1023,7 +1023,7 @@ void WaterTracksRenderSystem::loadTracks(void)
 				goto tryagain;
 			}
 
-			umod=TheWaterTracksRenderSystem->bindTrack(wtype);
+			umod=bindTrack(wtype);
 			if (umod)
 			{	//umod->init(1.5f*MAP_XY_FACTOR,Vector2(0,0),Vector2(1,1),"wave256.tga");
 				flipU ^= 1;	//toggle flip state
@@ -1032,7 +1032,7 @@ void WaterTracksRenderSystem::loadTracks(void)
 
 				if (waveTypeInfo[wtype].m_secondWaveTimeOffset)	//check if we need a second wave to follow
 				{
-					umod=TheWaterTracksRenderSystem->bindTrack(wtype);
+					umod=bindTrack(wtype);
 					if (umod)
 					{
 						umod->init(waveTypeInfo[wtype].m_finalHeight,waveTypeInfo[wtype].m_finalWidth,startPos,endPos,waveTypeInfo[wtype].m_textureName,waveTypeInfo[wtype].m_secondWaveTimeOffset);

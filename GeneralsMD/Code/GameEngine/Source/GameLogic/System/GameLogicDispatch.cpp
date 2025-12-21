@@ -320,7 +320,7 @@ void GameLogic::prepareNewGame( GameMode gameMode, GameDifficulty diff, Int rank
 		m_background->bringForward();
 	}
 	m_background->getFirstWindow()->winClearStatus(WIN_STATUS_IMAGE);
-	TheGameLogic->setGameMode( gameMode );
+	setGameMode( gameMode );
 	if (!TheGlobalData->m_pendingFile.isEmpty())
 	{
 		TheWritableGlobalData->m_mapName = TheGlobalData->m_pendingFile;
@@ -331,7 +331,7 @@ void GameLogic::prepareNewGame( GameMode gameMode, GameDifficulty diff, Int rank
 	DEBUG_LOG(("GameLogic::prepareNewGame() - m_rankPointsToAddAtGameStart = %d", m_rankPointsToAddAtGameStart));
 
 	// If we're about to start a game, hide the shell.
-	if(!TheGameLogic->isInShellGame())
+	if(!isInShellGame())
 		TheShell->hideShell();
 
 	m_startNewGame = FALSE;
@@ -466,7 +466,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 #endif
 			}
 			currentlySelectedGroup = NULL;
-			TheGameLogic->clearGameData();
+			clearGameData();
 			break;
 
 		}
@@ -509,7 +509,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		//---------------------------------------------------------------------------------------------
 		case GameMessage::MSG_SET_RALLY_POINT:
 		{
-			Object *obj = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *obj = findObjectByID( msg->getArgument( 0 )->objectID );
 			Coord3D dest = msg->getArgument( 1 )->location;
 			if (obj)
 			{
@@ -538,7 +538,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		//---------------------------------------------------------------------------------------------
 		case GameMessage::MSG_COMBATDROP_AT_OBJECT:
 		{
-			Object *targetObject = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *targetObject = findObjectByID( msg->getArgument( 0 )->objectID );
 
 			// issue command for either single object or for selected group
 			if( currentlySelectedGroup )
@@ -590,7 +590,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 			// Lock the weapon choice to the right weapon, then give an attack command
 
 			WeaponSlotType weaponSlot = (WeaponSlotType)msg->getArgument( 0 )->integer;
-			Object *targetObject = TheGameLogic->findObjectByID( msg->getArgument( 1 )->objectID );
+			Object *targetObject = findObjectByID( msg->getArgument( 1 )->objectID );
 			Int maxShotsToFire = msg->getArgument( 2 )->integer;
 
 			// sanity
@@ -677,7 +677,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 
 			// check for possible specific source, ignoring selection.
 			ObjectID sourceID = msg->getArgument(2)->objectID;
-			Object* source = TheGameLogic->findObjectByID(sourceID);
+			Object* source = findObjectByID(sourceID);
 			if (source != NULL)
 			{
 				AIGroupPtr theGroup = TheAI->createGroup();
@@ -715,14 +715,14 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 
 			// Object in way -- if applicable (some specials care, others don't)
 			ObjectID objectID = msg->getArgument( 3 )->objectID;
-			Object *objectInWay = TheGameLogic->findObjectByID( objectID );
+			Object *objectInWay = findObjectByID( objectID );
 
 			// Command button options -- special power may care about variance options
 			UnsignedInt options = msg->getArgument( 4 )->integer;
 
 			// check for possible specific source, ignoring selection.
 			ObjectID sourceID = msg->getArgument(5)->objectID;
-			Object* source = TheGameLogic->findObjectByID(sourceID);
+			Object* source = findObjectByID(sourceID);
 			if (source != NULL)
 			{
 				AIGroupPtr theGroup = TheAI->createGroup();
@@ -754,7 +754,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 
 			// argument 2 is target object
 			ObjectID targetID = msg->getArgument(1)->objectID;
-			Object *target = TheGameLogic->findObjectByID( targetID );
+			Object *target = findObjectByID( targetID );
 			if( !target )
 			{
 				break;
@@ -765,7 +765,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 
 			// check for possible specific source, ignoring selection.
 			ObjectID sourceID = msg->getArgument(3)->objectID;
-			Object* source = TheGameLogic->findObjectByID(sourceID);
+			Object* source = findObjectByID(sourceID);
 			if (source != NULL)
 			{
 				AIGroupPtr theGroup = TheAI->createGroup();
@@ -864,7 +864,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		//---------------------------------------------------------------------------------------------
 		case GameMessage::MSG_DO_GUARD_OBJECT:
 		{
-			Object* obj = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object* obj = findObjectByID( msg->getArgument( 0 )->objectID );
 			if (!obj)
 				break;
 
@@ -1000,7 +1000,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		//---------------------------------------------------------------------------------------------
 		case GameMessage::MSG_ENTER:
 		{
-			Object *enter = TheGameLogic->findObjectByID( msg->getArgument( 1 )->objectID );
+			Object *enter = findObjectByID( msg->getArgument( 1 )->objectID );
 
 			// sanity
 			if( enter == NULL )
@@ -1019,7 +1019,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		//---------------------------------------------------------------------------------------------
 		case GameMessage::MSG_EXIT:
 		{
-			Object *objectWantingToExit = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *objectWantingToExit = findObjectByID( msg->getArgument( 0 )->objectID );
 #if RETAIL_COMPATIBLE_AIGROUP
 			Object *objectContainingExiter = getSingleObjectFromSelection(currentlySelectedGroup);
 #else
@@ -1109,7 +1109,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		// --------------------------------------------------------------------------------------------
 		case GameMessage::MSG_GET_REPAIRED:
 		{
-			Object *repairDepot = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *repairDepot = findObjectByID( msg->getArgument( 0 )->objectID );
 
 			// sanity
 			if( repairDepot == NULL )
@@ -1126,7 +1126,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		// --------------------------------------------------------------------------------------------
 		case GameMessage::MSG_DOCK:
 		{
-			Object *dockBuilding = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *dockBuilding = findObjectByID( msg->getArgument( 0 )->objectID );
 
 			// sanity
 			if( dockBuilding == NULL )
@@ -1143,7 +1143,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		// --------------------------------------------------------------------------------------------
 		case GameMessage::MSG_GET_HEALED:
 		{
-			Object *healDest = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *healDest = findObjectByID( msg->getArgument( 0 )->objectID );
 
 			// sanity
 			if( healDest == NULL )
@@ -1160,7 +1160,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		// --------------------------------------------------------------------------------------------
 		case GameMessage::MSG_DO_REPAIR:
 		{
-			Object *repairTarget = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *repairTarget = findObjectByID( msg->getArgument( 0 )->objectID );
 
 			// sanity
 			if( repairTarget == NULL )
@@ -1180,7 +1180,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		// --------------------------------------------------------------------------------------------
 		case GameMessage::MSG_RESUME_CONSTRUCTION:
 		{
-			Object *constructTarget = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *constructTarget = findObjectByID( msg->getArgument( 0 )->objectID );
 
 			// sanity
 			if( constructTarget == NULL )
@@ -1208,7 +1208,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 			SpecialPowerType spType = (SpecialPowerType)msg->getArgument( 1 )->integer;
 
 			ObjectID sourceID = msg->getArgument(2)->objectID;
-			Object* source = TheGameLogic->findObjectByID(sourceID);
+			Object* source = findObjectByID(sourceID);
 			if (source != NULL)
 			{
 				AIGroupPtr theGroup = TheAI->createGroup();
@@ -1235,7 +1235,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		//---------------------------------------------------------------------------------------------
 		case GameMessage::MSG_DO_ATTACK_OBJECT:
 		{
-			Object *enemy = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *enemy = findObjectByID( msg->getArgument( 0 )->objectID );
 
 			// Check enemy, as it is possible that he died this frame.
 			if (enemy)
@@ -1257,7 +1257,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		//---------------------------------------------------------------------------------------------
 		case GameMessage::MSG_DO_FORCE_ATTACK_OBJECT:
 		{
-			Object *enemy = TheGameLogic->findObjectByID( msg->getArgument( 0 )->objectID );
+			Object *enemy = findObjectByID( msg->getArgument( 0 )->objectID );
 
 			// Check enemy, as it is possible that he died this frame.
 			if (enemy)
@@ -1593,12 +1593,12 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 			Bool firstObject = TRUE;
 
 			for (Int i = 1; i < msg->getArgumentCount(); ++i) {
-				Object *obj = TheGameLogic->findObjectByID( msg->getArgument( i )->objectID );
+				Object *obj = findObjectByID( msg->getArgument( i )->objectID );
 				if (!obj) {
 					continue;
 				}
 
-				TheGameLogic->selectObject(obj, createNewGroup && firstObject, player->getPlayerMask());
+				selectObject(obj, createNewGroup && firstObject, player->getPlayerMask());
 				firstObject = FALSE;
 			}
 
@@ -1618,12 +1618,12 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 
 			for (Int i = 0; i < msg->getArgumentCount(); ++i) {
 				ObjectID objID = msg->getArgument(i)->objectID;
-				Object *objToRemove = TheGameLogic->findObjectByID(objID);
+				Object *objToRemove = findObjectByID(objID);
 				if (!objToRemove) {
 					continue;
 				}
 
-				TheGameLogic->deselectObject(objToRemove, player->getPlayerMask());
+				deselectObject(objToRemove, player->getPlayerMask());
 			}
 
 			break;
@@ -1773,7 +1773,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 						{
 							if (beacon->getControllingPlayer() == thisPlayer)
 							{
-								TheGameLogic->destroyObject(beacon); // the owner is telling it to go away.  such is life.
+								destroyObject(beacon); // the owner is telling it to go away.  such is life.
 
 								TheControlBar->markUIDirty(); // check if we should un-grey out the button
 							}

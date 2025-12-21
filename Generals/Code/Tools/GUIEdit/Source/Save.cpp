@@ -1124,7 +1124,7 @@ void GUIEdit::validateNames( GameWindow *root, char *filename, Bool *valid )
 	}
 
 	// check for a duplicate filename
-	if( TheEditor->isNameDuplicate( TheWindowManager->winGetWindowList(),
+	if( isNameDuplicate( TheWindowManager->winGetWindowList(),
 																	root, instData->m_decoratedNameString ) )
 	{
 
@@ -1228,7 +1228,7 @@ Bool GUIEdit::saveData( char *filePathAndFilename, char *filename )
 	if( valid == FALSE )
 	{
 
-		MessageBox( TheEditor->getWindowHandle(), offendingNames, "Window Name Error", MB_OK );
+		MessageBox( getWindowHandle(), offendingNames, "Window Name Error", MB_OK );
 		return FALSE;
 
 	}

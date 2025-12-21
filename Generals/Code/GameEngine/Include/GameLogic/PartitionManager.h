@@ -1321,7 +1321,7 @@ public:
 	void getCellCenterPos(Int x, Int y, Real& xx, Real& yy);
 
 	// find the cell that covers the world coords (wx,wy) and return its coords.
-	void worldToCell(Real wx, Real wy, Int *cx, Int *cy);
+	void worldToCell(Real wx, Real wy, Int *cx, Int *cy) const;
 
 	// given a distance in world coords, return the number of cells needed to cover that distance (rounding up)
 	Int worldToCellDist(Real w);
@@ -1494,7 +1494,7 @@ public:
 };
 
 // -----------------------------------------------------------------------------
-inline void PartitionManager::worldToCell(Real wx, Real wy, Int *cx, Int *cy)
+inline void PartitionManager::worldToCell(Real wx, Real wy, Int *cx, Int *cy) const
 {
 	*cx = REAL_TO_INT_FLOOR((wx - m_worldExtents.lo.x) * m_cellSizeInv);
 	*cy = REAL_TO_INT_FLOOR((wy - m_worldExtents.lo.y) * m_cellSizeInv);

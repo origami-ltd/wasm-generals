@@ -1072,7 +1072,7 @@ void GameClient::preloadAssets( TimeOfDay timeOfDay )
 			draw->preloadAssets( timeOfDay );
 
 			// destroy the drawable
-			TheGameClient->destroyDrawable( draw );
+			destroyDrawable( draw );
 
 		}
 
@@ -1496,7 +1496,7 @@ void GameClient::xfer( Xfer *xfer )
 				const ThingTemplate* drawTemplate = draw->getTemplate();
 				if (drawTemplate->getFinalOverride() != thingTemplate->getFinalOverride())
 				{
-					TheGameClient->destroyDrawable( draw );
+					destroyDrawable( draw );
 					draw = TheThingFactory->newDrawable( thingTemplate );
 					TheGameLogic->bindObjectAndDrawable(object, draw);
 				}

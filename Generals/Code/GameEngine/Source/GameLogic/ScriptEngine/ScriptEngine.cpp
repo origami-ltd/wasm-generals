@@ -5830,7 +5830,7 @@ void ScriptEngine::setPriorityThing( ScriptAction *pAction )
 	AsciiString typeArgument = pAction->getParameter(1)->getString();
 
 	// Our argument could be an individual type, or a list name.
-	const ObjectTypes *types = TheScriptEngine->getObjectTypes(typeArgument);
+	const ObjectTypes *types = getObjectTypes(typeArgument);
 	if( !types )
 	{
 		// Lookup failed, so it is just a single type
@@ -6379,7 +6379,7 @@ void ScriptEngine::addObjectToCache(Object* pNewObject)
 			if (it->second == NULL) {
 				AsciiString newNameForDead;
 				newNameForDead.format("Reassigning dead object's name '%s' to object (%d) of type '%s'", objName.str(), pNewObject->getID(), pNewObject->getTemplate()->getName().str());
-				TheScriptEngine->AppendDebugMessage(newNameForDead, FALSE);
+				AppendDebugMessage(newNameForDead, FALSE);
 				DEBUG_LOG((newNameForDead.str()));
 				it->second = pNewObject;
 				return;

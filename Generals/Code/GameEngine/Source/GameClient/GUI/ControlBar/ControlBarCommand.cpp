@@ -270,7 +270,7 @@ void ControlBar::populateCommand( Object *obj )
 	resetBuildQueueData();
 
 	// get command set
-	commandSet = TheControlBar->findCommandSet( obj->getCommandSetString() );
+	commandSet = findCommandSet( obj->getCommandSetString() );
 
 	// if no command set match is found hide all the buttons
 	if( commandSet == NULL )

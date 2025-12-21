@@ -2699,7 +2699,7 @@ void TerrainLogic::flattenTerrain(Object *obj)
 						match = true;
 					}
 					if (match) {
-						totalHeight += TheTerrainLogic->getGroundHeight(testPt.X, testPt.Y);
+						totalHeight += getGroundHeight(testPt.X, testPt.Y);
 						numSamples++;
 					}
 				}
@@ -2710,7 +2710,7 @@ void TerrainLogic::flattenTerrain(Object *obj)
 
 			// Compare to the height at the building's origin, because setRawMapHeight will only lower,
 			// not raise.  jba
-			Int centerHeight = REAL_TO_INT_FLOOR(TheTerrainLogic->getGroundHeight(pos->x, pos->y)/MAP_HEIGHT_SCALE);
+			Int centerHeight = REAL_TO_INT_FLOOR(getGroundHeight(pos->x, pos->y)/MAP_HEIGHT_SCALE);
 			if (rawDataHeight>centerHeight) rawDataHeight = centerHeight;
 
 			for (i=iMin.x; i<=iMax.x; i++) {
@@ -2788,7 +2788,7 @@ void TerrainLogic::flattenTerrain(Object *obj)
 						match = true;
 					}
 					if (match) {
-						totalHeight += TheTerrainLogic->getGroundHeight(testPt.X, testPt.Y);
+						totalHeight += getGroundHeight(testPt.X, testPt.Y);
 						numSamples++;
 					}
 				}

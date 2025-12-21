@@ -275,10 +275,10 @@ Bool GUIEdit::validateParentForCreate( GameWindow *parent )
 	// gadgets are units themselves and should have no user defined
 	// children
 	//
-	if( parent && TheEditor->windowIsGadget( parent ) )
+	if( parent && windowIsGadget( parent ) )
 	{
 
-		MessageBox( TheEditor->getWindowHandle(),
+		MessageBox( getWindowHandle(),
 								"You cannot make a new window as a child to a GUI Gadget Control",
 								"Illegal Parent", MB_OK );
 		return FALSE;
@@ -717,7 +717,7 @@ void GUIEdit::update( void )
 	TheMouse->update();
 
 	// process the mouse if we're in test mode
-	if( TheEditor->getMode() == MODE_TEST_RUN )
+	if( getMode() == MODE_TEST_RUN )
 	{
 
 		// send input through the window system and clear all messages after
@@ -762,12 +762,12 @@ Bool GUIEdit::writeConfigFile( const char *filename )
 					 backColor.red, backColor.green, backColor.blue, backColor.alpha );
 
 	// grid settings
-	fprintf( fp, "GRIDRESOLUTION = %d\n", TheEditor->getGridResolution() );
-	RGBColorInt *gridColor = TheEditor->getGridColor();
+	fprintf( fp, "GRIDRESOLUTION = %d\n", getGridResolution() );
+	RGBColorInt *gridColor = getGridColor();
 	fprintf( fp, "GRIDCOLOR = %d %d %d %d\n",
 					 gridColor->red, gridColor->green, gridColor->blue, gridColor->alpha );
-	fprintf( fp, "SNAPTOGRID = %d\n", TheEditor->isGridSnapOn() );
-	fprintf( fp, "GRIDVISIBLE = %d\n", TheEditor->isGridVisible() );
+	fprintf( fp, "SNAPTOGRID = %d\n", isGridSnapOn() );
+	fprintf( fp, "GRIDVISIBLE = %d\n", isGridVisible() );
 
 	// write hierarchy position and size
 	ICoord2D pos, size;
@@ -817,15 +817,15 @@ Bool GUIEdit::readConfigFile( const char *filename )
 	// grid settings
 	Int intData;
 	fscanf( fp, "GRIDRESOLUTION = %d\n", &intData );
-	TheEditor->setGridResolution( intData );
+	setGridResolution( intData );
 	RGBColorInt gridColor;
 	fscanf( fp, "GRIDCOLOR = %d %d %d %d\n",
 					&gridColor.red, &gridColor.green, &gridColor.blue, &gridColor.alpha );
-	TheEditor->setGridColor( &gridColor );
+	setGridColor( &gridColor );
 	fscanf( fp, "SNAPTOGRID = %d\n", &intData );
-	TheEditor->setGridSnap( intData );
+	setGridSnap( intData );
 	fscanf( fp, "GRIDVISIBLE = %d\n", &intData );
-	TheEditor->setGridVisible( intData );
+	setGridVisible( intData );
 
 	// hierarchy view
 	ICoord2D pos, size;
@@ -3446,7 +3446,7 @@ Bool GUIEdit::menuExit( void )
 			Bool success;
 
 			// save all our data
-			success = TheEditor->menuSave();
+			success = menuSave();
 
 			//
 			// if we were unable to save file ask them if it's still OK to
@@ -4000,7 +4000,7 @@ void GUIEdit::notifyNewWindow( GameWindow *window )
 //=============================================================================
 void GUIEdit::deleteSelected( void )
 {
-	Int count = TheEditor->selectionCount();
+	Int count = selectionCount();
 	Int i;
 	GameWindow **deleteList;
 	WindowSelectionEntry *select;
@@ -4042,7 +4042,7 @@ void GUIEdit::deleteSelected( void )
 //=============================================================================
 void GUIEdit::bringSelectedToTop( void )
 {
-	Int count = TheEditor->selectionCount();
+	Int count = selectionCount();
 
 	// no-op
 	if( count == 0 )
@@ -4118,8 +4118,8 @@ void GUIEdit::dragMoveSelectedWindows( ICoord2D *dragOrigin,
 		moveLoc.y = origin.y + (dragDest->y - dragOrigin->y);
 
 		// snap move location to grid if on
-		if( (TheEditor->getMode() == MODE_DRAG_MOVE) && TheEditor->isGridSnapOn() )
-			TheEditor->gridSnapLocation( &moveLoc, &moveLoc );
+		if( (getMode() == MODE_DRAG_MOVE) && isGridSnapOn() )
+			gridSnapLocation( &moveLoc, &moveLoc );
 
 		// kee the location legal
 		computeSafeLocation( window, moveLoc.x, moveLoc.y, &safeLoc.x, &safeLoc.y );
@@ -4523,7 +4523,7 @@ void GUIEdit::moveWindowTo( GameWindow *window, Int x, Int y )
 	window->winSetPosition( x, y );
 
 	// we've now made a change
-	TheEditor->setUnsaved( TRUE );
+	setUnsaved( TRUE );
 
 }
 

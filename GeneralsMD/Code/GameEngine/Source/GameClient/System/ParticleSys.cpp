@@ -2959,7 +2959,7 @@ ParticleSystemID ParticleSystemManager::createAttachedParticleSystemID(
 																			Object* attachTo,
 																			Bool createSlaves )
 {
-	ParticleSystem* pSystem = TheParticleSystemManager->createParticleSystem(sysTemplate, createSlaves);
+	ParticleSystem* pSystem = createParticleSystem(sysTemplate, createSlaves);
 	if (pSystem && attachTo)
 		pSystem->attachToObject(attachTo);
 	return pSystem ? pSystem->getSystemID() : INVALID_PARTICLE_SYSTEM_ID;

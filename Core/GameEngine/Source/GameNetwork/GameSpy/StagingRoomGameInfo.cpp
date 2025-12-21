@@ -844,7 +844,7 @@ void GameSpyStagingRoom::launchGame( void )
 	// shutdown the top, but do not pop it off the stack
 //		TheShell->hideShell();
 	// setup the Global Data with the Map and Seed
-	TheWritableGlobalData->m_pendingFile = TheGameSpyGame->getMap();
+	TheWritableGlobalData->m_pendingFile = getMap();
 
 	// send a message to the logic for a new game
 	GameMessage *msg = TheMessageStream->appendMessage( GameMessage::MSG_NEW_GAME );
@@ -861,7 +861,7 @@ void GameSpyStagingRoom::launchGame( void )
 	req.buddyRequestType = BuddyRequest::BUDDYREQUEST_SETSTATUS;
 	req.arg.status.status = GP_PLAYING;
 	strcpy(req.arg.status.statusString, "Loading");
-	sprintf(req.arg.status.locationString, "%s", WideCharStringToMultiByte(TheGameSpyGame->getGameName().str()).c_str());
+	sprintf(req.arg.status.locationString, "%s", WideCharStringToMultiByte(getGameName().str()).c_str());
 	TheGameSpyBuddyMessageQueue->addRequest(req);
 
 	delete TheNAT;

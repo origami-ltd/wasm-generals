@@ -709,7 +709,7 @@ void LANAPI::handleInActive(LANMessage *msg, UnsignedInt senderIP) {
 	}
 
 	// don't want to unaccept the host, that's silly.  They can't hit start alt-tabbed anyways.
-	if (senderIP == TheLAN->GetLocalIP()) {
+	if (senderIP == GetLocalIP()) {
 		return;
 	}
 

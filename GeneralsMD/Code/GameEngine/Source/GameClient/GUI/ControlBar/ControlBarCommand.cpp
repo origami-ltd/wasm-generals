@@ -271,7 +271,7 @@ void ControlBar::populateCommand( Object *obj )
 	resetBuildQueueData();
 
 	// get command set
-	commandSet = TheControlBar->findCommandSet( obj->getCommandSetString() );
+	commandSet = findCommandSet( obj->getCommandSetString() );
 
 	// if no command set match is found hide all the buttons
 	if( commandSet == NULL )
@@ -396,9 +396,9 @@ void ControlBar::populateCommand( Object *obj )
 									{
 										continue;
 									}
-									commandSet1 = TheControlBar->findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank1() );
-									commandSet3 = TheControlBar->findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank3() );
-									commandSet8 = TheControlBar->findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank8() );
+									commandSet1 = findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank1() );
+									commandSet3 = findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank3() );
+									commandSet8 = findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank8() );
 
 									if( !commandSet1 || !commandSet3 || !commandSet8 )
 									{

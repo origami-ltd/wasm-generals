@@ -189,9 +189,9 @@ void ControlBar::populatePurchaseScience( Player* player )
 			player->getPlayerTemplate()->getPurchaseScienceCommandSetRank3().isEmpty() ||
 			player->getPlayerTemplate()->getPurchaseScienceCommandSetRank8().isEmpty())
 		return;
-	commandSet1 = TheControlBar->findCommandSet(player->getPlayerTemplate()->getPurchaseScienceCommandSetRank1()); // TEMP WILL CHANGE TO PROPER WAY ONCE WORKING
-	commandSet3 = TheControlBar->findCommandSet(player->getPlayerTemplate()->getPurchaseScienceCommandSetRank3()); // TEMP WILL CHANGE TO PROPER WAY ONCE WORKING
-	commandSet8 = TheControlBar->findCommandSet(player->getPlayerTemplate()->getPurchaseScienceCommandSetRank8()); // TEMP WILL CHANGE TO PROPER WAY ONCE WORKING
+	commandSet1 = findCommandSet(player->getPlayerTemplate()->getPurchaseScienceCommandSetRank1()); // TEMP WILL CHANGE TO PROPER WAY ONCE WORKING
+	commandSet3 = findCommandSet(player->getPlayerTemplate()->getPurchaseScienceCommandSetRank3()); // TEMP WILL CHANGE TO PROPER WAY ONCE WORKING
+	commandSet8 = findCommandSet(player->getPlayerTemplate()->getPurchaseScienceCommandSetRank8()); // TEMP WILL CHANGE TO PROPER WAY ONCE WORKING
 
 	for( i = 0; i < MAX_PURCHASE_SCIENCE_RANK_1; i++ )
 		m_sciencePurchaseWindowsRank1[i]->winHide(TRUE);
@@ -2737,7 +2737,7 @@ void ControlBar::showRallyPoint(const Coord3D* loc)
 	marker->setOrientation(TheGlobalData->m_downwindAngle); // To blow down wind -- ML
 
 	// set the marker colors to that of the local player
-	Player* player = TheControlBar->getCurrentlyViewedPlayer();
+	Player* player = getCurrentlyViewedPlayer();
 	if (player)
 	{
 		if (TheGlobalData->m_timeOfDay == TIME_OF_DAY_NIGHT)
@@ -3299,7 +3299,7 @@ void ControlBar::populateSpecialPowerShortcut( Player *player)
 	// get command set
 	if(player->getPlayerTemplate()->getSpecialPowerShortcutCommandSet().isEmpty() )
 		return;
-	commandSet = TheControlBar->findCommandSet(player->getPlayerTemplate()->getSpecialPowerShortcutCommandSet()); // TEMP WILL CHANGE TO PROPER WAY ONCE WORKING
+	commandSet = findCommandSet(player->getPlayerTemplate()->getSpecialPowerShortcutCommandSet()); // TEMP WILL CHANGE TO PROPER WAY ONCE WORKING
 	if(!commandSet)
 		return;
 	// populate the button with commands defined
@@ -3403,9 +3403,9 @@ void ControlBar::populateSpecialPowerShortcut( Player *player)
 							{
 								continue;
 							}
-							commandSet1 = TheControlBar->findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank1() );
-							commandSet3 = TheControlBar->findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank3() );
-							commandSet8 = TheControlBar->findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank8() );
+							commandSet1 = findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank1() );
+							commandSet3 = findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank3() );
+							commandSet8 = findCommandSet( player->getPlayerTemplate()->getPurchaseScienceCommandSetRank8() );
 
 							if( !commandSet1 || !commandSet3 || !commandSet8 )
 							{
@@ -3617,7 +3617,7 @@ void ControlBar::updateSpecialPowerShortcut( void )
 				{
 					//Ugh... hacky.
 					//Look for a command button for a special power and if so, then get the command availability for it.
-					const CommandSet *commandSet = TheControlBar->findCommandSet( obj->getCommandSetString() );
+					const CommandSet *commandSet = findCommandSet( obj->getCommandSetString() );
 					if( commandSet )
 					{
 						for( Int commandIndex = 0; commandIndex < MAX_COMMANDS_PER_SET; commandIndex++ )

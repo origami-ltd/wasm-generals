@@ -2706,7 +2706,7 @@ void PartitionManager::reset()
 void PartitionManager::shutdown()
 {
 	m_updatedSinceLastReset = false;
-	ThePartitionManager->removeAllDirtyModules();
+	removeAllDirtyModules();
 
 #ifdef RTS_DEBUG
 	// the above *should* remove all the touched cells (via unRegisterObject), but let's check:
@@ -3081,7 +3081,7 @@ CellShroudStatus PartitionManager::getShroudStatusForPlayer(Int playerIndex, con
 {
 	Int x, y;
 
-	ThePartitionManager->worldToCell( loc->x, loc->y, &x, &y );
+	worldToCell( loc->x, loc->y, &x, &y );
 
 	return getShroudStatusForPlayer( playerIndex, x, y );
 }
@@ -3092,7 +3092,7 @@ ObjectShroudStatus PartitionManager::getPropShroudStatusForPlayer(Int playerInde
 {
 	Int x, y;
 
-	ThePartitionManager->worldToCell( loc->x - m_cellSize*0.5f, loc->y - m_cellSize*0.5f, &x, &y );
+	worldToCell( loc->x - m_cellSize*0.5f, loc->y - m_cellSize*0.5f, &x, &y );
 
 	CellShroudStatus cellStat = getShroudStatusForPlayer( playerIndex, x, y );
 	if (cellStat != getShroudStatusForPlayer( playerIndex, x+1, y )) {
@@ -3815,7 +3815,7 @@ Bool PartitionManager::tryPosition( const Coord3D *center,
 		// very small sphere geometry around the point
 		//
 		GeometryInfo geometry( GEOMETRY_SPHERE, TRUE, 5.0f, 5.0f, 5.0f );
-		ObjectIterator *iter = ThePartitionManager->iteratePotentialCollisions( &pos, geometry, angle, true );
+		ObjectIterator *iter = iteratePotentialCollisions( &pos, geometry, angle, true );
 		MemoryPoolObjectHolder hold( iter );
 //	Bool overlap = FALSE;
 
@@ -3995,9 +3995,9 @@ Bool PartitionManager::findPositionAround( const Coord3D *center,
 void PartitionManager::doShroudReveal(Real centerX, Real centerY, Real radius, PlayerMaskType playerMask)
 {
 	Int cellCenterX, cellCenterY;
-	ThePartitionManager->worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
+	worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
 
-	Int cellRadius = ThePartitionManager->worldToCellDist(radius);
+	Int cellRadius = worldToCellDist(radius);
 	if (cellRadius < 1)
 		cellRadius = 1;
 
@@ -4062,9 +4062,9 @@ void PartitionManager::resetPendingUndoShroudRevealQueue()
 void PartitionManager::undoShroudReveal(Real centerX, Real centerY, Real radius, PlayerMaskType playerMask)
 {
 	Int cellCenterX, cellCenterY;
-	ThePartitionManager->worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
+	worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
 
-	Int cellRadius = ThePartitionManager->worldToCellDist(radius);
+	Int cellRadius = worldToCellDist(radius);
 	if (cellRadius < 1)
 		cellRadius = 1;
 
@@ -4099,9 +4099,9 @@ void PartitionManager::queueUndoShroudReveal(Real centerX, Real centerY, Real ra
 void PartitionManager::doShroudCover(Real centerX, Real centerY, Real radius, PlayerMaskType playerMask)
 {
 	Int cellCenterX, cellCenterY;
-	ThePartitionManager->worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
+	worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
 
-	Int cellRadius = ThePartitionManager->worldToCellDist(radius);
+	Int cellRadius = worldToCellDist(radius);
 	if (cellRadius < 1)
 		cellRadius = 1;
 
@@ -4123,9 +4123,9 @@ void PartitionManager::doShroudCover(Real centerX, Real centerY, Real radius, Pl
 void PartitionManager::undoShroudCover(Real centerX, Real centerY, Real radius, PlayerMaskType playerMask)
 {
 	Int cellCenterX, cellCenterY;
-	ThePartitionManager->worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
+	worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
 
-	Int cellRadius = ThePartitionManager->worldToCellDist(radius);
+	Int cellRadius = worldToCellDist(radius);
 	if (cellRadius < 1)
 		cellRadius = 1;
 
@@ -4145,11 +4145,11 @@ void PartitionManager::undoShroudCover(Real centerX, Real centerY, Real radius, 
 void PartitionManager::doThreatAffect( Real centerX, Real centerY, Real radius, UnsignedInt threatVal, PlayerMaskType playerMask)
 {
 	Int cellCenterX, cellCenterY;
-	ThePartitionManager->worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
+	worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
 	Real fCellCenterX = INT_TO_REAL(cellCenterX);
 	Real fCellCenterY = INT_TO_REAL(cellCenterY);
 
-	Int cellRadius = ThePartitionManager->worldToCellDist(radius);
+	Int cellRadius = worldToCellDist(radius);
 	if (cellRadius < 1)
 		cellRadius = 1;
 
@@ -4178,11 +4178,11 @@ void PartitionManager::doThreatAffect( Real centerX, Real centerY, Real radius, 
 void PartitionManager::undoThreatAffect( Real centerX, Real centerY, Real radius, UnsignedInt threatVal, PlayerMaskType playerMask)
 {
 	Int cellCenterX, cellCenterY;
-	ThePartitionManager->worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
+	worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
 	Real fCellCenterX = INT_TO_REAL(cellCenterX);
 	Real fCellCenterY = INT_TO_REAL(cellCenterY);
 
-	Int cellRadius = ThePartitionManager->worldToCellDist(radius);
+	Int cellRadius = worldToCellDist(radius);
 	if (cellRadius < 1)
 		cellRadius = 1;
 
@@ -4211,11 +4211,11 @@ void PartitionManager::undoThreatAffect( Real centerX, Real centerY, Real radius
 void PartitionManager::doValueAffect( Real centerX, Real centerY, Real radius, UnsignedInt valueVal, PlayerMaskType playerMask)
 {
 	Int cellCenterX, cellCenterY;
-	ThePartitionManager->worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
+	worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
 	Real fCellCenterX = INT_TO_REAL(cellCenterX);
 	Real fCellCenterY = INT_TO_REAL(cellCenterY);
 
-	Int cellRadius = ThePartitionManager->worldToCellDist(radius);
+	Int cellRadius = worldToCellDist(radius);
 	if (cellRadius < 1)
 		cellRadius = 1;
 
@@ -4244,11 +4244,11 @@ void PartitionManager::doValueAffect( Real centerX, Real centerY, Real radius, U
 void PartitionManager::undoValueAffect( Real centerX, Real centerY, Real radius, UnsignedInt valueVal, PlayerMaskType playerMask)
 {
 	Int cellCenterX, cellCenterY;
-	ThePartitionManager->worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
+	worldToCell(centerX, centerY, &cellCenterX, &cellCenterY);
 	Real fCellCenterX = INT_TO_REAL(cellCenterX);
 	Real fCellCenterY = INT_TO_REAL(cellCenterY);
 
-	Int cellRadius = ThePartitionManager->worldToCellDist(radius);
+	Int cellRadius = worldToCellDist(radius);
 	if (cellRadius < 1)
 		cellRadius = 1;
 
@@ -4412,7 +4412,7 @@ Int PartitionManager::iterateCellsAlongLine(const Coord3D& pos, const Coord3D& p
 
 	for (Int curpixel = 0; curpixel <= numpixels; curpixel++)
 	{
-		PartitionCell* cell = ThePartitionManager->getCellAt(x, y);	// might be null if off the edge
+		PartitionCell* cell = getCellAt(x, y);	// might be null if off the edge
 		DEBUG_ASSERTCRASH(cell != NULL, ("off the map"));
 		if (cell)
 		{
@@ -4445,7 +4445,7 @@ Int PartitionManager::iterateCellsBreadthFirst(const Coord3D *pos, CellBreadthFi
 	// -1 means error, but we should add a define later for this.
 
 	Int cellX, cellY;
-	ThePartitionManager->worldToCell(pos->x, pos->y, &cellX, &cellY);
+	worldToCell(pos->x, pos->y, &cellX, &cellY);
 
 	// Note, bool. not Bool, cause bool will cause this to be a bitfield.
 	std::vector<bool> bitField;

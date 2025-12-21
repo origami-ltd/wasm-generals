@@ -1644,7 +1644,7 @@ void InGameUI::handleBuildPlacements( void )
 			Int maxObjects = TheGlobalData->m_maxLineBuildObjects;
 
 			// get the builder object that will be constructing things
-			Object *builderObject = TheGameLogic->findObjectByID( TheInGameUI->getPendingPlaceSourceObjectID() );
+			Object *builderObject = TheGameLogic->findObjectByID( getPendingPlaceSourceObjectID() );
 
 			//
 			// given the start/end points in the world and the the angle of the wall, fill
@@ -2682,7 +2682,7 @@ void InGameUI::createMouseoverHint( const GameMessage *msg )
 		TheMouse->resetTooltipDelay();
 	}
 
-	if (m_mouseMode == MOUSEMODE_DEFAULT && !m_isScrolling && !m_isSelecting && !TheInGameUI->getSelectCount() && (TheRecorder->getMode() != RECORDERMODETYPE_PLAYBACK || TheLookAtTranslator->hasMouseMovedRecently()))
+	if (m_mouseMode == MOUSEMODE_DEFAULT && !m_isScrolling && !m_isSelecting && !getSelectCount() && (TheRecorder->getMode() != RECORDERMODETYPE_PLAYBACK || TheLookAtTranslator->hasMouseMovedRecently()))
 	{
 		if( m_mousedOverDrawableID != INVALID_DRAWABLE_ID )
 		{
@@ -3450,7 +3450,7 @@ void InGameUI::deselectDrawable( Drawable *draw )
 //-------------------------------------------------------------------------------------------------
 void InGameUI::deselectAllDrawables( Bool postMsg )
 {
-	const DrawableList *selected = TheInGameUI->getAllSelectedDrawables();
+	const DrawableList *selected = getAllSelectedDrawables();
 
 	// loop through all the selected drawables
 	for ( DrawableListCIt it = selected->begin(); it != selected->end(); )
@@ -3460,7 +3460,7 @@ void InGameUI::deselectAllDrawables( Bool postMsg )
 		Drawable* draw = *it++;
 
 		// do the deselection
-		TheInGameUI->deselectDrawable( draw );
+		deselectDrawable( draw );
 
 	}
 
@@ -4255,39 +4255,39 @@ void InGameUI::displayCantBuildMessage( LegalBuildCode lbc )
 
 		//---------------------------------------------------------------------------------------------
 		case LBC_RESTRICTED_TERRAIN:
-			TheInGameUI->message( "GUI:CantBuildRestrictedTerrain" );
+			message( "GUI:CantBuildRestrictedTerrain" );
 			break;
 
 		//---------------------------------------------------------------------------------------------
 		case LBC_NOT_FLAT_ENOUGH:
-			TheInGameUI->message( "GUI:CantBuildNotFlatEnough" );
+			message( "GUI:CantBuildNotFlatEnough" );
 			break;
 
 		//---------------------------------------------------------------------------------------------
 		case LBC_OBJECTS_IN_THE_WAY:
-			TheInGameUI->message( "GUI:CantBuildObjectsInTheWay" );
+			message( "GUI:CantBuildObjectsInTheWay" );
 			break;
 
 		//---------------------------------------------------------------------------------------------
 		case LBC_TOO_CLOSE_TO_SUPPLIES:
-			TheInGameUI->message( "GUI:CantBuildTooCloseToSupplies" );
+			message( "GUI:CantBuildTooCloseToSupplies" );
 			break;
 
 		//---------------------------------------------------------------------------------------------
 		case LBC_NO_CLEAR_PATH:
-		  TheInGameUI->message( "GUI:CantBuildNoClearPath" );
+		  message( "GUI:CantBuildNoClearPath" );
 			break;
 
 		//---------------------------------------------------------------------------------------------
 		case LBC_SHROUD:
-			TheInGameUI->message( "GUI:CantBuildShroud" );
+			message( "GUI:CantBuildShroud" );
 			break;
 
 		//---------------------------------------------------------------------------------------------
 		case LBC_GENERIC_FAILURE:
 		default:
 
-			TheInGameUI->message( "GUI:CantBuildThere" );
+			message( "GUI:CantBuildThere" );
 			break;
 
 	}
@@ -4319,7 +4319,7 @@ void InGameUI::militarySubtitle( const AsciiString& label, Int duration )
 	const int messageTimeout = currLogicFrame + (Int)(((Real)LOGICFRAMES_PER_SECOND * duration)/1000.0f);
 
 	// disable tooltips until this frame, cause we don't want to collide with the military subtitles.
-	TheInGameUI->disableTooltipsUntil(messageTimeout);
+	disableTooltipsUntil(messageTimeout);
 
 	// calculate where this screen position should be since the position being passed in is based off 8x6
 	Coord2D multiplier;
@@ -4357,7 +4357,7 @@ void InGameUI::removeMilitarySubtitle( void )
 	if(!m_militarySubtitle)
 		return;
 
-	TheInGameUI->clearTooltipsDisabled();
+	clearTooltipsDisabled();
 
 	// loop through and free up the display strings
 	for(UnsignedInt i = 0; i <= m_militarySubtitle->currentDisplayString; i ++)
@@ -4376,7 +4376,7 @@ void InGameUI::removeMilitarySubtitle( void )
 // ------------------------------------------------------------------------------------------------
 Bool InGameUI::areSelectedObjectsControllable() const
 {
-	const DrawableList *selected = TheInGameUI->getAllSelectedDrawables();
+	const DrawableList *selected = getAllSelectedDrawables();
 
 	// loop through all the selected drawables
 	const Drawable *draw;
@@ -4438,7 +4438,7 @@ CanAttackResult InGameUI::getCanSelectedObjectsAttack( ActionType action, const 
 	}
 
 	// get selected list of drawables
-	const DrawableList *selected = TheInGameUI->getAllSelectedDrawables();
+	const DrawableList *selected = getAllSelectedDrawables();
 
 	// set up counters for rule checking
 	Int count = 0;
@@ -4537,7 +4537,7 @@ Bool InGameUI::canSelectedObjectsDoAction( ActionType action, const Object *obje
 	}
 
 	// get selected list of drawables
-	const DrawableList *selected = TheInGameUI->getAllSelectedDrawables();
+	const DrawableList *selected = getAllSelectedDrawables();
 
 	// set up counters for rule checking
 	Int count = 0;
@@ -4695,7 +4695,7 @@ Bool InGameUI::canSelectedObjectsDoSpecialPower( const CommandButton *command, c
 	if (ignoreSelDraw)
 		tmpList.push_back(ignoreSelDraw);
 
-	const DrawableList* selected = (!tmpList.empty()) ? &tmpList : TheInGameUI->getAllSelectedDrawables();
+	const DrawableList* selected = (!tmpList.empty()) ? &tmpList : getAllSelectedDrawables();
 
 	// set up counters for rule checking
 	Int count = 0;
@@ -4761,7 +4761,7 @@ Bool InGameUI::canSelectedObjectsOverrideSpecialPowerDestination( const Coord3D 
 	Int qualify = 0;
 
 	// get selected list of drawables
-	const DrawableList *selected = TheInGameUI->getAllSelectedDrawables();
+	const DrawableList *selected = getAllSelectedDrawables();
 
 	// loop through all the selected drawables
 	Drawable *other;
@@ -4813,7 +4813,7 @@ Bool InGameUI::canSelectedObjectsEffectivelyUseWeapon( const CommandButton *comm
 	}
 
 	// get selected list of drawables
-	const DrawableList *selected = TheInGameUI->getAllSelectedDrawables();
+	const DrawableList *selected = getAllSelectedDrawables();
 
 	// set up counters for rule checking
 	Int count = 0;
@@ -5030,16 +5030,16 @@ Int InGameUI::selectAllUnitsByTypeAcrossScreen(KindOfMaskType mustBeSet, KindOfM
 	Int numSelected = selectAllUnitsByTypeAcrossRegion(&region, mustBeSet, mustBeClear);
 	if (numSelected == -1)
 	{
-		UnicodeString message = TheGameText->fetch( "GUI:NothingSelected" );
-		TheInGameUI->message( message );
+		UnicodeString msgStr = TheGameText->fetch( "GUI:NothingSelected" );
+		message( msgStr );
 	}
 	else if (numSelected == 0)
 	{
 	}
 	else
 	{
-		UnicodeString message = TheGameText->fetch( "GUI:SelectedAcrossScreen" );
-		TheInGameUI->message( message );
+		UnicodeString msgStr = TheGameText->fetch( "GUI:SelectedAcrossScreen" );
+		message( msgStr );
 	}
 	return numSelected;
 }
@@ -5064,16 +5064,16 @@ Int InGameUI::selectMatchingAcrossScreen( void )
 	Int numSelected = selectMatchingAcrossRegion(&region);
 	if (numSelected == -1)
 	{
-		UnicodeString message = TheGameText->fetch( "GUI:NothingSelected" );
-		TheInGameUI->message( message );
+		UnicodeString msgStr = TheGameText->fetch( "GUI:NothingSelected" );
+		message( msgStr );
 	}
 	else if (numSelected == 0)
 	{
 	}
 	else
 	{
-		UnicodeString message = TheGameText->fetch( "GUI:SelectedAcrossScreen" );
-		TheInGameUI->message( message );
+		UnicodeString msgStr = TheGameText->fetch( "GUI:SelectedAcrossScreen" );
+		message( msgStr );
 	}
 	return numSelected;
 }
@@ -5085,22 +5085,22 @@ Int InGameUI::selectAllUnitsByTypeAcrossMap(KindOfMaskType mustBeSet, KindOfMask
 	Int numSelected = selectAllUnitsByTypeAcrossRegion(NULL, mustBeSet, mustBeClear);
 	if (numSelected == -1)
 	{
-		UnicodeString message = TheGameText->fetch( "GUI:NothingSelected" );
-		TheInGameUI->message( message );
+		UnicodeString msgStr = TheGameText->fetch( "GUI:NothingSelected" );
+		message( msgStr );
 	}
 	else if (numSelected == 0)
 	{
-		Drawable *draw = TheInGameUI->getFirstSelectedDrawable();
+		Drawable *draw = getFirstSelectedDrawable();
 		if( !draw || !draw->getObject() || !draw->getObject()->isKindOf( KINDOF_STRUCTURE ) )
 		{
-			UnicodeString message = TheGameText->fetch( "GUI:SelectedAcrossMap" );
-			TheInGameUI->message( message );
+			UnicodeString msgStr = TheGameText->fetch( "GUI:SelectedAcrossMap" );
+			message( msgStr );
 		}
 	}
 	else
 	{
-		UnicodeString message = TheGameText->fetch( "GUI:SelectedAcrossMap" );
-		TheInGameUI->message( message );
+		UnicodeString msgStr = TheGameText->fetch( "GUI:SelectedAcrossMap" );
+		message( msgStr );
 	}
 	return numSelected;
 }
@@ -5114,22 +5114,22 @@ Int InGameUI::selectMatchingAcrossMap()
 	Int numSelected = selectMatchingAcrossRegion(NULL);
 	if (numSelected == -1)
 	{
-		UnicodeString message = TheGameText->fetch( "GUI:NothingSelected" );
-		TheInGameUI->message( message );
+		UnicodeString msgStr = TheGameText->fetch( "GUI:NothingSelected" );
+		message( msgStr );
 	}
 	else if (numSelected == 0)
 	{
-		Drawable *draw = TheInGameUI->getFirstSelectedDrawable();
+		Drawable *draw = getFirstSelectedDrawable();
 		if( !draw || !draw->getObject() || !draw->getObject()->isKindOf( KINDOF_STRUCTURE ) )
 		{
-			UnicodeString message = TheGameText->fetch( "GUI:SelectedAcrossMap" );
-			TheInGameUI->message( message );
+			UnicodeString msgStr = TheGameText->fetch( "GUI:SelectedAcrossMap" );
+			message( msgStr );
 		}
 	}
 	else
 	{
-		UnicodeString message = TheGameText->fetch( "GUI:SelectedAcrossMap" );
-		TheInGameUI->message( message );
+		UnicodeString msgStr = TheGameText->fetch( "GUI:SelectedAcrossMap" );
+		message( msgStr );
 	}
 	return numSelected;
 }
@@ -5751,7 +5751,7 @@ void InGameUI::selectNextIdleWorker( void )
 	}
 	else
 	{
-		Drawable *selectedDrawable = TheInGameUI->getFirstSelectedDrawable();
+		Drawable *selectedDrawable = getFirstSelectedDrawable();
 		// TheSuperHackers @tweak Stubbjax 22/07/2025 Idle worker iteration now correctly identifies and
 		// iterates contained idle workers. Previous iteration logic would not go past contained workers,
 		// and was not guaranteed to select top-level containers.

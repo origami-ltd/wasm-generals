@@ -508,7 +508,7 @@ void FirewallHelperClass::writeFirewallBehavior(void)
 	numstr = num;
 	(pref)["FirewallBehavior"] = numstr;
 
-	TheWritableGlobalData->m_firewallPortAllocationDelta = TheFirewallHelper->getSourcePortAllocationDelta();
+	TheWritableGlobalData->m_firewallPortAllocationDelta = getSourcePortAllocationDelta();
 	num[0] = 0;
 	itoa(TheGlobalData->m_firewallPortAllocationDelta, num, 10);
 	numstr = num;

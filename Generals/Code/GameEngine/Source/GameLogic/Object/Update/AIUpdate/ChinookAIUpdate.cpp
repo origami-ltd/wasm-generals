@@ -1002,9 +1002,16 @@ Bool ChinookAIUpdate::chooseLocomotorSet(LocomotorSetType wst)
 UpdateSleepTime ChinookAIUpdate::update()
 {
 	ParkingPlaceBehaviorInterface* pp = getPP(m_airfieldForHealing);
+	const ContainModuleInterface* contain = getObject()->getContain();
+	const Bool waitingToEnterOrExit = contain && contain->hasObjectsWantingToEnterOrExit();
+
 	if (pp != NULL)
 	{
 		if (m_flightStatus == CHINOOK_LANDED &&
+#if !RETAIL_COMPATIBLE_CRC
+				// TheSuperHackers @bugfix Stubbjax 03/11/2025 Prevent Chinooks from taking off while there are still units wanting to enter or exit.
+				!waitingToEnterOrExit &&
+#endif
 				!m_hasPendingCommand &&
 				getObject()->getBodyModule()->getHealth() == getObject()->getBodyModule()->getMaxHealth())
 		{
@@ -1026,10 +1033,8 @@ UpdateSleepTime ChinookAIUpdate::update()
 	// when we have a pending command...
 	if (SupplyTruckAIUpdate::isIdle())
 	{
-		ContainModuleInterface* contain = getObject()->getContain();
 		if( contain )
 		{
-			Bool waitingToEnterOrExit = contain->hasObjectsWantingToEnterOrExit();
 			if (m_hasPendingCommand)
 			{
 				AICommandParms parms(AICMD_MOVE_TO_POSITION, CMD_FROM_AI);	// values don't matter, will be wiped by next line

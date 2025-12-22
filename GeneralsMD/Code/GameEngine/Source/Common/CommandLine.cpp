@@ -83,7 +83,7 @@ static void ConvertShortMapPathToLongMapPath(AsciiString &mapName)
 		return;
 	}
 	path.nextToken(&token, "\\/");
-	while (!token.endsWithNoCase(".map") && (token.getLength() > 0))
+	while (!token.endsWithNoCase(".map") && (!token.isEmpty()))
 	{
 		actualpath.concat(token);
 		actualpath.concat('\\');

@@ -1714,7 +1714,7 @@ PlayerLeaveCode ConnectionManager::disconnectPlayer(Int slot) {
 
 	UnicodeString unicodeName;
 	unicodeName = getPlayerName(slot);
-	if (unicodeName.getLength() > 0 && m_connections[slot]) {
+	if (!unicodeName.isEmpty() && m_connections[slot]) {
 		TheInGameUI->message("Network:PlayerLeftGame", unicodeName.str());
 
 		// People are boneheads. Also play a sound

@@ -504,7 +504,7 @@ WindowMsgHandledType PopupHostGameSystem( GameWindow *window, UnsignedInt msg, W
 				UnicodeString name;
 				name = GadgetTextEntryGetText(textEntryGameName);
 				name.trim();
-				if(name.getLength() <= 0)
+				if(name.isEmpty())
 				{
 					name.translate(TheGameSpyInfo->getLocalName());
 					GadgetTextEntrySetText(textEntryGameName, name);

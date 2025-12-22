@@ -525,7 +525,7 @@ void GameInfo::setMap( AsciiString mapName )
 			}
 
 			AsciiString newMapName;
-			if (mapName.getLength() > 0)
+			if (!mapName.isEmpty())
 			{
 				AsciiString token;
 				mapName.nextToken(&token, "\\/");
@@ -536,7 +536,7 @@ void GameInfo::setMap( AsciiString mapName )
 				// added onto it.
 				while (mapName.find('\\') != NULL)
 				{
-					if (newMapName.getLength() > 0)
+					if (!newMapName.isEmpty())
 					{
 						newMapName.concat('/');
 					}
@@ -896,7 +896,7 @@ AsciiString GameInfoToAsciiString( const GameInfo *game )
 	AsciiString mapName = game->getMap();
 	mapName = TheGameState->realMapPathToPortableMapPath(mapName);
 	AsciiString newMapName;
-	if (mapName.getLength() > 0)
+	if (!mapName.isEmpty())
 	{
 		AsciiString token;
 		mapName.nextToken(&token, "\\/");
@@ -907,7 +907,7 @@ AsciiString GameInfoToAsciiString( const GameInfo *game )
 		// added onto it.
 		while (mapName.find('\\') != NULL)
 		{
-			if (newMapName.getLength() > 0)
+			if (!newMapName.isEmpty())
 			{
 				newMapName.concat('/');
 			}
@@ -1073,7 +1073,7 @@ Bool ParseAsciiStringToGameInfo(GameInfo *game, AsciiString options)
 			AsciiString token;
 			tempstr = val.str()+2;
 			tempstr.nextToken(&token, "\\/");
-			while (tempstr.getLength() > 0)
+			while (!tempstr.isEmpty())
 			{
 				mapName.concat(token);
 				mapName.concat('\\');

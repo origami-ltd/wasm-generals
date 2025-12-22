@@ -1780,7 +1780,7 @@ AudibleSoundClass::Load (ChunkLoadClass &cload)
 	//
 	//	Reconstruct the sound buffer we had before we saved
 	//
-	if (filename.Get_Length () > 0) {
+	if (!filename.Is_Empty()) {
 		bool is_3d = (As_Sound3DClass () != NULL);
 		SoundBufferClass *buffer = WWAudioClass::Get_Instance ()->Get_Sound_Buffer (filename, is_3d);
 		Set_Buffer (buffer);

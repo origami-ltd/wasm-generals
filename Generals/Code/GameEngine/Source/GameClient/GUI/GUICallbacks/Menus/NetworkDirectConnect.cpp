@@ -285,7 +285,7 @@ void NetworkDirectConnectInit( WindowLayout *layout, void *userData )
 	UnicodeString name;
 	name = userprefs.getUserName();
 
-	if (name.getLength() == 0)
+	if (name.isEmpty())
 	{
 		name = TheGameText->fetch("GUI:Player");
 	}

@@ -402,7 +402,7 @@ int RawFileClass::Open(int rights)
 	**	Verify that there is a filename associated with this file object. If not, then this is a
 	**	big error condition.
 	*/
-	if (Filename.Get_Length()==0) {
+	if (Filename.Is_Empty()) {
 		Error(ENOENT, false);
 	}
 
@@ -492,7 +492,7 @@ int RawFileClass::Open(int rights)
  *=============================================================================================*/
 bool RawFileClass::Is_Available(int forced)
 {
-	if (Filename.Get_Length()==0) return(false);
+	if (Filename.Is_Empty()) return(false);
 
 	/*
 	**	If the file is already open, then is must have already passed the availability check.

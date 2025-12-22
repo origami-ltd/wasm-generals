@@ -39,13 +39,13 @@
 // and ? is used to denote a single wildcard character.
 static Bool SearchStringMatches(AsciiString str, AsciiString searchString)
 {
-	if (str.getLength() == 0) {
-		if (searchString.getLength() == 0) {
+	if (str.isEmpty()) {
+		if (searchString.isEmpty()) {
 			return TRUE;
 		}
 		return FALSE;
 	}
-	if (searchString.getLength() == 0) {
+	if (searchString.isEmpty()) {
 		return FALSE;
 	}
 
@@ -103,7 +103,7 @@ void ArchiveFile::addFile(const AsciiString& path, const ArchivedFileInfo *fileI
 	tokenizer.toLower();
 	tokenizer.nextToken(&token, "\\/");
 
-	while (token.getLength() > 0)
+	while (!token.isEmpty())
 	{
 		DetailedArchivedDirectoryInfoMap::iterator tempiter = dirInfo->m_directories.find(token);
 		if (tempiter == dirInfo->m_directories.end())
@@ -131,7 +131,7 @@ void ArchiveFile::getFileListInDirectory(const AsciiString& currentDirectory, co
 	tokenizer.toLower();
 	tokenizer.nextToken(&token, "\\/");
 
-	while (token.getLength() > 0) {
+	while (!token.isEmpty()) {
 
 		DetailedArchivedDirectoryInfoMap::const_iterator it = dirInfo->m_directories.find(token);
 		if (it != dirInfo->m_directories.end())
@@ -157,7 +157,7 @@ void ArchiveFile::getFileListInDirectory(const DetailedArchivedDirectoryInfo *di
 		const DetailedArchivedDirectoryInfo *tempDirInfo = &(diriter->second);
 		AsciiString tempdirname;
 		tempdirname = currentDirectory;
-		if ((tempdirname.getLength() > 0) && (!tempdirname.endsWith("\\"))) {
+		if ((!tempdirname.isEmpty()) && (!tempdirname.endsWith("\\"))) {
 			tempdirname.concat('\\');
 		}
 		tempdirname.concat(tempDirInfo->m_directoryName);
@@ -170,7 +170,7 @@ void ArchiveFile::getFileListInDirectory(const DetailedArchivedDirectoryInfo *di
 		if (SearchStringMatches(fileiter->second.m_filename, searchName)) {
 			AsciiString tempfilename;
 			tempfilename = currentDirectory;
-			if ((tempfilename.getLength() > 0) && (!tempfilename.endsWith("\\"))) {
+			if ((!tempfilename.isEmpty()) && (!tempfilename.endsWith("\\"))) {
 				tempfilename.concat('\\');
 			}
 			tempfilename.concat(fileiter->second.m_filename);

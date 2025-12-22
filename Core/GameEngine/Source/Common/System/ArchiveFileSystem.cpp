@@ -305,7 +305,7 @@ Bool ArchiveFileSystem::getFileInfo(const AsciiString& filename, FileInfo *fileI
 		return FALSE;
 	}
 
-	if (filename.getLength() <= 0) {
+	if (filename.isEmpty()) {
 		return FALSE;
 	}
 

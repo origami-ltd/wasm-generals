@@ -3191,7 +3191,7 @@ void InGameUI::setGUICommand( const CommandButton *command )
 		if( BitIsSet( command->getOptions(), COMMAND_OPTION_NEED_TARGET ) == FALSE )
 		{
 
-			DEBUG_ASSERTCRASH( 0, ("setGUICommand: Command '%s' does not need additional user interaction",
+			DEBUG_CRASH( ("setGUICommand: Command '%s' does not need additional user interaction",
 														command->getName().str()) );
 			m_pendingGUICommand = nullptr;
 			m_mouseMode = MOUSEMODE_DEFAULT;
@@ -5841,7 +5841,7 @@ void InGameUI::selectNextIdleWorker( void )
 
 	if(m_idleWorkers[index].empty())
 	{
-		DEBUG_ASSERTCRASH(FALSE, ("InGameUI::selectNextIdleWorker We're trying to select a worker when our list is empty for player %ls", player->getPlayerDisplayName().str()));
+		DEBUG_CRASH(("InGameUI::selectNextIdleWorker We're trying to select a worker when our list is empty for player %ls", player->getPlayerDisplayName().str()));
 		return;
 	}
 	Object *selectThisObject = nullptr;

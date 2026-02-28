@@ -441,7 +441,7 @@ void reallyDoStart()
 
 	if (isSkirmish)
 	{
-		InitGameLogicRandom(TheSkirmishGameInfo->getSeed());
+		InitRandom(TheSkirmishGameInfo->getSeed());
 
 		GameMessage *msg = TheMessageStream->appendMessage( GameMessage::MSG_NEW_GAME );
 		msg->appendIntegerArgument(GAME_SKIRMISH);
@@ -451,7 +451,7 @@ void reallyDoStart()
 	}
 	else
 	{
-		InitGameLogicRandom(0);
+		InitRandom(0);
 
 		GameMessage *msg = TheMessageStream->appendMessage( GameMessage::MSG_NEW_GAME );
 		msg->appendIntegerArgument(GAME_SINGLE_PLAYER);

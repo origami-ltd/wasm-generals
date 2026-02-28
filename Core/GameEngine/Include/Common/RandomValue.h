@@ -32,7 +32,6 @@
 
 extern void InitRandom();
 extern void InitRandom( UnsignedInt seed );
-extern void InitGameLogicRandom( UnsignedInt seed ); ///< Set the GameLogic seed to a known value at game start
 extern UnsignedInt GetGameLogicRandomSeed();   ///< Get the seed (used for replays)
 extern UnsignedInt GetGameLogicRandomSeedCRC();///< Get the seed (used for CRCs)
 

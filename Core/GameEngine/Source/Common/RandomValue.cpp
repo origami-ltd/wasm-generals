@@ -65,6 +65,66 @@ static UnsignedInt theGameLogicSeed[6] =
     0xf22d0e56L, 0x883126e9L, 0xc624dd2fL, 0x702c49cL, 0x9e353f7dL, 0x6fdf3b64L
 };
 
+UnsignedInt GetGameLogicRandomSeed()
+{
+	return theGameLogicBaseSeed;
+}
+
+UnsignedInt GetGameLogicRandomSeedCRC()
+{
+	CRC c;
+	c.computeCRC(theGameLogicSeed, 6*sizeof(UnsignedInt));
+	return c.get();
+}
+
+static void seedRandom(UnsignedInt SEED, UnsignedInt *seed)
+{
+	UnsignedInt ax;
+
+	ax = SEED;                      /* mov     eax,SEED                     */
+	ax += 0xf22d0e56;               /* add     eax,0f22d0e56h               */
+	seed[0] = ax;                   /* mov     seed,eax                     */
+	ax += 0x883126e9 - 0xf22d0e56;  /* add     eax,0883126e9h-0f22d0e56h    */
+	seed[1] = ax;                   /* mov     seed+4,eax                   */
+	ax += 0xc624dd2f - 0x883126e9;  /* add     eax,0c624dd2fh-0883126e9h    */
+	seed[2] = ax;                   /* mov     seed+8,eax                   */
+	ax += 0x0702c49c - 0xc624dd2f;  /* add     eax,00702c49ch-0c624dd2fh    */
+	seed[3] = ax;                   /* mov     seed+12,eax                  */
+	ax += 0x9e353f7d - 0x0702c49c;  /* add     eax,09e353f7dh-00702c49ch    */
+	seed[4] = ax;                   /* mov     seed+16,eax                  */
+	ax += 0x6fdf3b64 - 0x9e353f7d;  /* add     eax,06fdf3b64h-09e353f7dh    */
+	seed[5] = ax;                   /* mov     seed+20,eax                  */
+}
+
+void InitRandom()
+{
+#ifdef DETERMINISTIC
+	// needs to be the same every time
+	seedRandom(0, theGameClientSeed);
+	seedRandom(0, theGameAudioSeed);
+	seedRandom(0, theGameLogicSeed);
+	theGameLogicBaseSeed = 0;
+#else
+	time_t seconds = time( nullptr );
+
+	seedRandom(seconds, theGameAudioSeed);
+	seedRandom(seconds, theGameClientSeed);
+	seedRandom(seconds, theGameLogicSeed);
+	theGameLogicBaseSeed = seconds;
+#endif
+}
+
+void InitRandom( UnsignedInt seed )
+{
+	seedRandom(seed, theGameAudioSeed);
+	seedRandom(seed, theGameClientSeed);
+	seedRandom(seed, theGameLogicSeed);
+	theGameLogicBaseSeed = seed;
+#ifdef DEBUG_RANDOM_LOGIC
+DEBUG_LOG(( "InitRandom %08lx",seed));
+#endif
+}
+
 // Add with carry. SUM is replaced with A + B + C, C is replaced with 1  if there was a carry, 0 if there wasn't. A carry occurred if the sum is  less than one of the inputs. This is addition, so carry can never be  more than one.
 #define ADC(SUM, A, B, C)   SUM = (A) + (B) + (C); C = ((SUM < (A)) || (SUM < (B)))
 
@@ -111,71 +171,11 @@ static UnsignedInt randomValue(UnsignedInt *seed)
 	return(ax);
 }
 
-static void seedRandom(UnsignedInt SEED, UnsignedInt *seed)
-{
-	UnsignedInt ax;
-
-	ax = SEED;                      /* mov     eax,SEED                     */
-	ax += 0xf22d0e56;               /* add     eax,0f22d0e56h               */
-	seed[0] = ax;                   /* mov     seed,eax                     */
-	ax += 0x883126e9 - 0xf22d0e56;  /* add     eax,0883126e9h-0f22d0e56h    */
-	seed[1] = ax;                   /* mov     seed+4,eax                   */
-	ax += 0xc624dd2f - 0x883126e9;  /* add     eax,0c624dd2fh-0883126e9h    */
-	seed[2] = ax;                   /* mov     seed+8,eax                   */
-	ax += 0x0702c49c - 0xc624dd2f;  /* add     eax,00702c49ch-0c624dd2fh    */
-	seed[3] = ax;                   /* mov     seed+12,eax                  */
-	ax += 0x9e353f7d - 0x0702c49c;  /* add     eax,09e353f7dh-00702c49ch    */
-	seed[4] = ax;                   /* mov     seed+16,eax                  */
-	ax += 0x6fdf3b64 - 0x9e353f7d;  /* add     eax,06fdf3b64h-09e353f7dh    */
-	seed[5] = ax;                   /* mov     seed+20,eax                  */
-}
-
 //
 // It is necessary to separate the GameClient and GameLogic usage of random
 // values to ensure that the GameLogic remains deterministic, regardless
 // of the effects displayed on the GameClient.
 //
-
-UnsignedInt GetGameLogicRandomSeed()
-{
-	return theGameLogicBaseSeed;
-}
-
-UnsignedInt GetGameLogicRandomSeedCRC()
-{
-	CRC c;
-	c.computeCRC(theGameLogicSeed, 6*sizeof(UnsignedInt));
-	return c.get();
-}
-
-void InitRandom()
-{
-#ifdef DETERMINISTIC
-	// needs to be the same every time
-	seedRandom(0, theGameClientSeed);
-	seedRandom(0, theGameAudioSeed);
-	seedRandom(0, theGameLogicSeed);
-	theGameLogicBaseSeed = 0;
-#else
-	time_t seconds = time( nullptr );
-
-	seedRandom(seconds, theGameAudioSeed);
-	seedRandom(seconds, theGameClientSeed);
-	seedRandom(seconds, theGameLogicSeed);
-	theGameLogicBaseSeed = seconds;
-#endif
-}
-
-void InitRandom( UnsignedInt seed )
-{
-	seedRandom(seed, theGameAudioSeed);
-	seedRandom(seed, theGameClientSeed);
-	seedRandom(seed, theGameLogicSeed);
-	theGameLogicBaseSeed = seed;
-#ifdef DEBUG_RANDOM_LOGIC
-DEBUG_LOG(( "InitRandom %08lx",seed));
-#endif
-}
 
 //
 // Integer random value

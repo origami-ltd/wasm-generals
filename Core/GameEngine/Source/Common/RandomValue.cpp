@@ -180,6 +180,100 @@ DEBUG_LOG(( "InitRandom %08lx",seed));
 //
 // Integer random value
 //
+Int GetGameAudioRandomValue( int lo, int hi, const char *file, int line )
+{
+	UnsignedInt delta = hi - lo + 1;
+	Int rval;
+
+	if (delta == 0)
+		return hi;
+
+	rval = ((Int)(randomValue(theGameAudioSeed) % delta)) + lo;
+
+/**/
+#ifdef DEBUG_RANDOM_AUDIO
+DEBUG_LOG(( "%d: GetGameAudioRandomValue = %d (%d - %d), %s line %d",
+				TheGameLogic->getFrame(), rval, lo, hi, file, line ));
+#endif
+/**/
+
+	return rval;
+}
+
+//
+// Real valued random value
+//
+Real GetGameAudioRandomValueReal( Real lo, Real hi, const char *file, int line )
+{
+	Real delta = hi - lo;
+	Real rval;
+
+	if (delta <= 0.0f)
+		return hi;
+
+	rval = ((Real)(randomValue(theGameAudioSeed)) * theMultFactor ) * delta + lo;
+
+	DEBUG_ASSERTCRASH( rval >= lo && rval <= hi, ("Bad random val"));
+/**/
+#ifdef DEBUG_RANDOM_AUDIO
+DEBUG_LOG(( "%d: GetGameAudioRandomValueReal = %f, %s line %d",
+					TheGameLogic->getFrame(), rval, file, line ));
+#endif
+/**/
+
+	return rval;
+}
+
+//
+// Integer random value
+//
+Int GetGameClientRandomValue( int lo, int hi, const char *file, int line )
+{
+	UnsignedInt delta = hi - lo + 1;
+	Int rval;
+
+	if (delta == 0)
+		return hi;
+
+	rval = ((Int)(randomValue(theGameClientSeed) % delta)) + lo;
+
+/**/
+#ifdef DEBUG_RANDOM_CLIENT
+DEBUG_LOG(( "%d: GetGameClientRandomValue = %d (%d - %d), %s line %d",
+				TheGameLogic ? TheGameLogic->getFrame() : -1, rval, lo, hi, file, line ));
+#endif
+/**/
+
+	return rval;
+}
+
+//
+// Real valued random value
+//
+Real GetGameClientRandomValueReal( Real lo, Real hi, const char *file, int line )
+{
+	Real delta = hi - lo;
+	Real rval;
+
+	if (delta <= 0.0f)
+		return hi;
+
+	rval = ((Real)(randomValue(theGameClientSeed)) * theMultFactor ) * delta + lo;
+
+	DEBUG_ASSERTCRASH( rval >= lo && rval <= hi, ("Bad random val"));
+/**/
+#ifdef DEBUG_RANDOM_CLIENT
+DEBUG_LOG(( "%d: GetGameClientRandomValueReal = %f, %s line %d",
+					TheGameLogic->getFrame(), rval, file, line ));
+#endif
+/**/
+
+	return rval;
+}
+
+//
+// Integer random value
+//
 Int GetGameLogicRandomValue( int lo, int hi, const char *file, int line )
 {
 	//Int delta = hi - lo + 1;
@@ -207,6 +301,30 @@ Int GetGameLogicRandomValue( int lo, int hi, const char *file, int line )
 #ifdef DEBUG_RANDOM_LOGIC
 DEBUG_LOG(( "%d: GetGameLogicRandomValue = %d (%d - %d), %s line %d",
 				 TheGameLogic->getFrame(), rval, lo, hi, file, line ));
+#endif
+/**/
+
+	return rval;
+}
+
+//
+// Real valued random value
+//
+Real GetGameLogicRandomValueReal( Real lo, Real hi, const char *file, int line )
+{
+	Real delta = hi - lo;
+	Real rval;
+
+	if (delta <= 0.0f)
+		return hi;
+
+	rval = ((Real)(randomValue(theGameLogicSeed)) * theMultFactor ) * delta + lo;
+
+	DEBUG_ASSERTCRASH( rval >= lo && rval <= hi, ("Bad random val"));
+/**/
+#ifdef DEBUG_RANDOM_LOGIC
+DEBUG_LOG(( "%d: GetGameLogicRandomValueReal = %f, %s line %d",
+					TheGameLogic->getFrame(), rval, file, line ));
 #endif
 /**/
 
@@ -245,76 +363,6 @@ Int GetGameLogicRandomValueUnchanged( int lo, int hi, const char *file, int line
 }
 
 //
-// Integer random value
-//
-Int GetGameClientRandomValue( int lo, int hi, const char *file, int line )
-{
-	UnsignedInt delta = hi - lo + 1;
-	Int rval;
-
-	if (delta == 0)
-		return hi;
-
-	rval = ((Int)(randomValue(theGameClientSeed) % delta)) + lo;
-
-/**/
-#ifdef DEBUG_RANDOM_CLIENT
-DEBUG_LOG(( "%d: GetGameClientRandomValue = %d (%d - %d), %s line %d",
-				TheGameLogic ? TheGameLogic->getFrame() : -1, rval, lo, hi, file, line ));
-#endif
-/**/
-
-	return rval;
-}
-
-//
-// Integer random value
-//
-Int GetGameAudioRandomValue( int lo, int hi, const char *file, int line )
-{
-	UnsignedInt delta = hi - lo + 1;
-	Int rval;
-
-	if (delta == 0)
-		return hi;
-
-	rval = ((Int)(randomValue(theGameAudioSeed) % delta)) + lo;
-
-/**/
-#ifdef DEBUG_RANDOM_AUDIO
-DEBUG_LOG(( "%d: GetGameAudioRandomValue = %d (%d - %d), %s line %d",
-				TheGameLogic->getFrame(), rval, lo, hi, file, line ));
-#endif
-/**/
-
-	return rval;
-}
-
-//
-// Real valued random value
-//
-Real GetGameLogicRandomValueReal( Real lo, Real hi, const char *file, int line )
-{
-	Real delta = hi - lo;
-	Real rval;
-
-	if (delta <= 0.0f)
-		return hi;
-
-	rval = ((Real)(randomValue(theGameLogicSeed)) * theMultFactor ) * delta + lo;
-
-	DEBUG_ASSERTCRASH( rval >= lo && rval <= hi, ("Bad random val"));
-/**/
-#ifdef DEBUG_RANDOM_LOGIC
-DEBUG_LOG(( "%d: GetGameLogicRandomValueReal = %f, %s line %d",
-					TheGameLogic->getFrame(), rval, file, line ));
-#endif
-/**/
-
-	return rval;
-}
-
-//
 // TheSuperHackers @info This function does not change the seed values with retail compatibility disabled.
 // Consecutive calls always return the same value for the same combination of min / max values, assuming the seed values haven't changed in between.
 // The intended use case for this function are randomized values that are desirable to be synchronized across clients,
@@ -341,54 +389,6 @@ Real GetGameLogicRandomValueRealUnchanged( Real lo, Real hi, const char *file, i
 	DEBUG_LOG(( "%d: GetGameLogicRandomValueRealUnchanged = %f, %s line %d",
 		TheGameLogic->getFrame(), rval, file, line ));
 #endif
-
-	return rval;
-}
-
-//
-// Real valued random value
-//
-Real GetGameClientRandomValueReal( Real lo, Real hi, const char *file, int line )
-{
-	Real delta = hi - lo;
-	Real rval;
-
-	if (delta <= 0.0f)
-		return hi;
-
-	rval = ((Real)(randomValue(theGameClientSeed)) * theMultFactor ) * delta + lo;
-
-	DEBUG_ASSERTCRASH( rval >= lo && rval <= hi, ("Bad random val"));
-/**/
-#ifdef DEBUG_RANDOM_CLIENT
-DEBUG_LOG(( "%d: GetGameClientRandomValueReal = %f, %s line %d",
-					TheGameLogic->getFrame(), rval, file, line ));
-#endif
-/**/
-
-	return rval;
-}
-
-//
-// Real valued random value
-//
-Real GetGameAudioRandomValueReal( Real lo, Real hi, const char *file, int line )
-{
-	Real delta = hi - lo;
-	Real rval;
-
-	if (delta <= 0.0f)
-		return hi;
-
-	rval = ((Real)(randomValue(theGameAudioSeed)) * theMultFactor ) * delta + lo;
-
-	DEBUG_ASSERTCRASH( rval >= lo && rval <= hi, ("Bad random val"));
-/**/
-#ifdef DEBUG_RANDOM_AUDIO
-DEBUG_LOG(( "%d: GetGameAudioRandomValueReal = %f, %s line %d",
-					TheGameLogic->getFrame(), rval, file, line ));
-#endif
-/**/
 
 	return rval;
 }

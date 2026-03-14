@@ -663,6 +663,18 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 			Object* source = findObjectByID(sourceID);
 			if (source != nullptr)
 			{
+#if !RETAIL_COMPATIBLE_CRC
+				// TheSuperHackers @fix stephanmeesters 01/03/2026 Validate the origin of the source object
+				if ( source->getControllingPlayer() != thisPlayer )
+				{
+					DEBUG_CRASH( ("MSG_DO_SPECIAL_POWER: Player '%ls' attempted to control the object '%s' owned by player '%ls'.",
+						 thisPlayer->getPlayerDisplayName().str(),
+						 source->getTemplate()->getName().str(),
+						 source->getControllingPlayer()->getPlayerDisplayName().str()) );
+					break;
+				}
+#endif
+
 				AIGroupPtr theGroup = TheAI->createGroup();
 				theGroup->add(source);
 				theGroup->groupDoSpecialPower( specialPowerID, options );
@@ -705,6 +717,18 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 			Object* source = findObjectByID(sourceID);
 			if (source != nullptr)
 			{
+#if !RETAIL_COMPATIBLE_CRC
+				// TheSuperHackers @fix stephanmeesters 01/03/2026 Validate the origin of the source object
+				if ( source->getControllingPlayer() != thisPlayer )
+				{
+					DEBUG_CRASH( ("MSG_DO_SPECIAL_POWER_AT_LOCATION: Player '%ls' attempted to control the object '%s' owned by player '%ls'.",
+						 thisPlayer->getPlayerDisplayName().str(),
+						 source->getTemplate()->getName().str(),
+						 source->getControllingPlayer()->getPlayerDisplayName().str()) );
+					break;
+				}
+#endif
+
 				AIGroupPtr theGroup = TheAI->createGroup();
 				theGroup->add(source);
 				theGroup->groupDoSpecialPowerAtLocation( specialPowerID, &targetCoord, INVALID_ANGLE, objectInWay, options );
@@ -748,6 +772,18 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 			Object* source = findObjectByID(sourceID);
 			if (source != nullptr)
 			{
+#if !RETAIL_COMPATIBLE_CRC
+				// TheSuperHackers @fix stephanmeesters 01/03/2026 Validate the origin of the source object
+				if ( source->getControllingPlayer() != thisPlayer )
+				{
+					DEBUG_CRASH( ("MSG_DO_SPECIAL_POWER_AT_OBJECT: Player '%ls' attempted to control the object '%s' owned by player '%ls'.",
+						 thisPlayer->getPlayerDisplayName().str(),
+						 source->getTemplate()->getName().str(),
+						 source->getControllingPlayer()->getPlayerDisplayName().str()) );
+					break;
+				}
+#endif
+
 				AIGroupPtr theGroup = TheAI->createGroup();
 				theGroup->add(source);
 				theGroup->groupDoSpecialPowerAtObject( specialPowerID, target, options );
@@ -1189,6 +1225,18 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 			Object* source = findObjectByID(sourceID);
 			if (source != nullptr)
 			{
+#if !RETAIL_COMPATIBLE_CRC
+				// TheSuperHackers @fix stephanmeesters 01/03/2026 Validate the origin of the source object
+				if ( source->getControllingPlayer() != thisPlayer )
+				{
+					DEBUG_CRASH( ("MSG_DO_SPECIAL_POWER_OVERRIDE_DESTINATION: Player '%ls' attempted to control the object '%s' owned by player '%ls'.",
+						 thisPlayer->getPlayerDisplayName().str(),
+						 source->getTemplate()->getName().str(),
+						 source->getControllingPlayer()->getPlayerDisplayName().str()) );
+					break;
+				}
+#endif
+
 				AIGroupPtr theGroup = TheAI->createGroup();
 				theGroup->add(source);
 				theGroup->groupOverrideSpecialPowerDestination( spType, loc, CMD_FROM_PLAYER );

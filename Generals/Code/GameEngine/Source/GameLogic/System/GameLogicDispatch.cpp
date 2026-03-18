@@ -347,8 +347,11 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 #endif
 
 	Player *msgPlayer = ThePlayerList->getNthPlayer( msg->getPlayerIndex() );
-	DEBUG_ASSERTCRASH( msgPlayer, ("logicMessageDispatcher: Processing message from unknown player (player index '%d')",
-																	msg->getPlayerIndex()) );
+	if (msgPlayer == nullptr)
+	{
+		DEBUG_CRASH(("logicMessageDispatcher: Processing message from unknown player (player index '%d')", msg->getPlayerIndex()));
+		return;
+	}
 
 	AIGroupPtr currentlySelectedGroup = nullptr;
 
@@ -404,7 +407,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 	if (commandName.isNotEmpty() /*&& msg->getType() != GameMessage::MSG_FRAME_TICK*/)
 	{
 		DEBUG_LOG(("Frame %d: GameLogic::logicMessageDispatcher() saw a %s from player %d (%ls)", getFrame(), commandName.str(),
-			msg->getPlayerIndex(), msgPlayer->getPlayerDisplayName().str()));
+			msgPlayer->getPlayerIndex(), msgPlayer->getPlayerDisplayName().str()));
 	}
 #endif
 #endif // DEBUG_LOGGING
@@ -1634,13 +1637,6 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		case GameMessage::MSG_CREATE_SELECTED_GROUP:
 		{
 			Bool createNewGroup = msg->getArgument( 0 )->boolean;
-			Player *player = ThePlayerList->getNthPlayer(msg->getPlayerIndex());
-
-			if (player == nullptr) {
-				DEBUG_CRASH(("GameLogicDispatch - MSG_CREATE_SELECTED_GROUP had an invalid player number"));
-				break;
-			}
-
 			Bool firstObject = TRUE;
 
 			for (Int i = 1; i < msg->getArgumentCount(); ++i) {
@@ -1649,7 +1645,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 					continue;
 				}
 
-				selectObject(obj, createNewGroup && firstObject, player->getPlayerMask());
+				selectObject(obj, createNewGroup && firstObject, msgPlayer->getPlayerMask());
 				firstObject = FALSE;
 			}
 
@@ -1660,13 +1656,6 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		//---------------------------------------------------------------------------------------------
 		case GameMessage::MSG_REMOVE_FROM_SELECTED_GROUP:
 		{
-			Player *player = ThePlayerList->getNthPlayer(msg->getPlayerIndex());
-
-			if (player == nullptr) {
-				DEBUG_CRASH(("GameLogicDispatch - MSG_CREATE_SELECTED_GROUP had an invalid player number"));
-				break;
-			}
-
 			for (Int i = 0; i < msg->getArgumentCount(); ++i) {
 				ObjectID objID = msg->getArgument(i)->objectID;
 				Object *objToRemove = findObjectByID(objID);
@@ -1674,7 +1663,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 					continue;
 				}
 
-				deselectObject(objToRemove, player->getPlayerMask());
+				deselectObject(objToRemove, msgPlayer->getPlayerMask());
 			}
 
 			break;
@@ -1684,11 +1673,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		//---------------------------------------------------------------------------------------------
 		case GameMessage::MSG_DESTROY_SELECTED_GROUP:
 		{
-			Player *player = ThePlayerList->getNthPlayer(msg->getPlayerIndex());
-			if (player != nullptr)
-			{
-				player->setCurrentlySelectedAIGroup(nullptr);
-			}
+			msgPlayer->setCurrentlySelectedAIGroup(nullptr);
 
 			break;
 
@@ -1902,7 +1887,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 				Int i=0;
 				for (; i<ThePlayerList->getPlayerCount(); ++i)
 				{
-					if (i != msg->getPlayerIndex())
+					if (i != msgPlayer->getPlayerIndex())
 					{
 						Player *otherPlayer = ThePlayerList->getNthPlayer(i);
 						if (msgPlayer->getRelationship(otherPlayer->getDefaultTeam()) == ALLIES &&
@@ -1984,13 +1969,9 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		case GameMessage::MSG_CREATE_TEAM8:
 		case GameMessage::MSG_CREATE_TEAM9:
 		{
-			Int playerIndex = msg->getPlayerIndex();
-			Player *player = ThePlayerList->getNthPlayer(playerIndex);
-			DEBUG_ASSERTCRASH(player != nullptr, ("Could not find player for create team message"));
-
 			// TheSuperHackers @tweak Stubbjax 17/08/2025 The local player processes this message in CommandXlat for immediate assignment.
-			if (player && !player->isLocalPlayer())
-				player->processCreateTeamGameMessage(msg->getType() - GameMessage::MSG_CREATE_TEAM0, msg);
+			if (!msgPlayer->isLocalPlayer())
+				msgPlayer->processCreateTeamGameMessage(msg->getType() - GameMessage::MSG_CREATE_TEAM0, msg);
 
 			break;
 		}
@@ -2006,16 +1987,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		case GameMessage::MSG_SELECT_TEAM8:
 		case GameMessage::MSG_SELECT_TEAM9:
 		{
-			Int playerIndex = msg->getPlayerIndex();
-			Player *player = ThePlayerList->getNthPlayer(playerIndex);
-			DEBUG_ASSERTCRASH(player != nullptr, ("Could not find player for select team message"));
-
-			if (player == nullptr)
-			{
-				break;
-			}
-
-			player->processSelectTeamGameMessage(msg->getType() - GameMessage::MSG_SELECT_TEAM0, msg);
+			msgPlayer->processSelectTeamGameMessage(msg->getType() - GameMessage::MSG_SELECT_TEAM0, msg);
 			break;
 		}
 
@@ -2030,16 +2002,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 		case GameMessage::MSG_ADD_TEAM8:
 		case GameMessage::MSG_ADD_TEAM9:
 		{
-			Int playerIndex = msg->getPlayerIndex();
-			Player *player = ThePlayerList->getNthPlayer(playerIndex);
-			DEBUG_ASSERTCRASH(player != nullptr, ("Could not find player for add team message"));
-
-			if (player == nullptr)
-			{
-				break;
-			}
-
-			player->processAddTeamGameMessage(msg->getType() - GameMessage::MSG_ADD_TEAM0, msg);
+			msgPlayer->processAddTeamGameMessage(msg->getType() - GameMessage::MSG_ADD_TEAM0, msg);
 			break;
 		}
 
@@ -2075,11 +2038,10 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 #endif
 				}
 
-				//UnsignedInt oldCRC = m_cachedCRCs[msg->getPlayerIndex()];
 				UnsignedInt newCRC = msg->getArgument(0)->integer;
 				//DEBUG_LOG(("Received CRC of %8.8X from %ls on frame %d", newCRC,
 					//msgPlayer->getPlayerDisplayName().str(), m_frame));
-				m_cachedCRCs[msg->getPlayerIndex()] = newCRC; // to mask problem: = (oldCRC < newCRC)?newCRC:oldCRC;
+				m_cachedCRCs[msgPlayer->getPlayerIndex()] = newCRC;
 			}
 			else if (TheRecorder && TheRecorder->isPlaybackMode())
 			{
@@ -2099,7 +2061,7 @@ void GameLogic::logicMessageDispatcher( GameMessage *msg, void *userData )
 			ScienceType science = (ScienceType)msg->getArgument( 0 )->integer;
 
 			// sanity
-			if( science == SCIENCE_INVALID || msgPlayer == nullptr )
+			if( science == SCIENCE_INVALID )
 				break;
 
 			msgPlayer->attemptToPurchaseScience(science);

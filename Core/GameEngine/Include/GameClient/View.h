@@ -376,5 +376,40 @@ class ViewLocation
 		}
 };
 
+// TheSuperHackers @feature bobtista 31/01/2026
+// View that does nothing. Used for Headless Mode.
+class ViewDummy : public View
+{
+public:
+	virtual Drawable *pickDrawable( const ICoord2D *screen, Bool forceAttack, PickType pickType ) override
+	{
+		return nullptr;
+	}
+	virtual Int iterateDrawablesInRegion( IRegion2D *screenRegion, Bool (*callback)( Drawable *draw, void *userData ), void *userData ) override
+	{
+		return 0;
+	}
+	virtual void forceRedraw() override {}
+	virtual const Coord3D& get3DCameraPosition() const override
+	{
+		static Coord3D zero = {0,0,0};
+		return zero;
+	}
+	virtual WorldToScreenReturn worldToScreenTriReturn(const Coord3D *w, ICoord2D *s ) override
+	{
+		return WTS_INVALID;
+	}
+	virtual void screenToTerrain( const ICoord2D *screen, Coord3D *world ) override {}
+	virtual void screenToWorldAtZ( const ICoord2D *s, Coord3D *w, Real z ) override {}
+	virtual void drawView( void ) override {}
+	virtual void updateView(void) override {}
+	virtual void stepView() override {}
+	virtual void setGuardBandBias( const Coord2D *gb ) override {}
+	virtual Bool isDoingScriptedCamera() override { return false; }
+	virtual void stopDoingScriptedCamera() override {}
+
+	// Do not override View::xfer(). The base implementation must run to serialize valid view state for save file compatibility.
+};
+
 // EXTERNALS //////////////////////////////////////////////////////////////////////////////////////
 extern View *TheTacticalView;		///< the main tactical interface to the game world

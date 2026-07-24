@@ -312,6 +312,14 @@ BaseHeightMapRenderObjClass::BaseHeightMapRenderObjClass()
 	DX8Wrapper::SetCleanupHook(this);
 }
 
+void BaseHeightMapRenderObjClass::scheduleFullUpdate()
+{
+	m_needFullUpdate = true;
+	if (TheTacticalView) {
+		TheTacticalView->onHeightMapChanged();
+	}
+}
+
 void BaseHeightMapRenderObjClass::setTextureLOD(Int lod)
 {
 	if (m_treeBuffer)
@@ -454,7 +462,7 @@ void BaseHeightMapRenderObjClass::ReAcquireResources()
 	{
 		this->initHeightData(m_x,m_y,m_map, nullptr);
 		// Tell lights to update next time through.
-		m_needFullUpdate = true;
+		scheduleFullUpdate();
 	}
 
 	if (m_treeBuffer) {
@@ -1823,7 +1831,7 @@ Int BaseHeightMapRenderObjClass::initHeightData(Int x, Int y, WorldHeightMap *pM
 	}
 
 	Set_Force_Visible(TRUE);	//terrain is always visible.
-	m_needFullUpdate = true;
+	scheduleFullUpdate();
 
 	m_scorchesInBuffer = 0;
 	m_curNumScorchVertices=0;
@@ -2352,7 +2360,7 @@ void BaseHeightMapRenderObjClass::removeTerrainBibDrawable(DrawableID id)
 void BaseHeightMapRenderObjClass::staticLightingChanged()
 {
 	// Cause the terrain to get updated with new lighting.
-	m_needFullUpdate = true;
+	scheduleFullUpdate();
 
 	// Cause the scorches to get updated with new lighting.
 	m_scorchesInBuffer = 0; // If we just allocated the buffers, we got no scorches in the buffer.

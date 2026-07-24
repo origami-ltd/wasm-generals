@@ -325,7 +325,7 @@ NATConnectionState NAT::connectionUpdate() {
 	m_transport->update();
 
 	// check to see if we've been probed.
-	for (Int i = 0; i < MAX_MESSAGES; ++i) {
+	for (size_t i = 0; i < ARRAY_SIZE(m_transport->m_inBuffer); ++i) {
 		if (m_transport->m_inBuffer[i].length > 0) {
 #ifdef DEBUG_LOGGING
 			UnsignedInt ip = m_transport->m_inBuffer[i].addr;
@@ -368,6 +368,8 @@ NATConnectionState NAT::connectionUpdate() {
 										PRINTF_IP_AS_4_INTS(ip), m_transport->m_inBuffer[i].port));
 				m_transport->m_inBuffer[i].length = 0;
 			}
+		} else {
+			break;
 		}
 	}
 

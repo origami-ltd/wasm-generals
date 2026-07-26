@@ -1684,7 +1684,7 @@ void FlightDeckBehavior::xfer( Xfer *xfer )
 	xfer->xferUnsignedInt( &m_startedProductionFrame );
 	xfer->xferUnsignedInt( &m_nextAllowedProductionFrame );
 	xfer->xferObjectID( &m_designatedTarget );
-	Int commandType;
+	Int commandType = (Int)m_designatedCommand;
 	xfer->xferInt( &commandType );
 	m_designatedCommand = (AICommandType)commandType;
 	xfer->xferCoord3D( &m_designatedPosition );

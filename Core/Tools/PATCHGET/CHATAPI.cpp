@@ -451,15 +451,6 @@ static void StartPatchCheck()
 
 	FormatURLFromRegistry(gameURL, mapURL, configURL, motdURL);
 
-	std::string proxy;
-	if (GetStringFromRegistry("", "Proxy", proxy))
-	{
-		if (!proxy.empty())
-		{
-			ghttpSetProxy(proxy.c_str());
-		}
-	}
-
 	// check for a patch first
 	checksLeft = 2;
 	cantConnect = false;

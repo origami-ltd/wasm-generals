@@ -51,7 +51,7 @@
  *   WW3D::Render -- Render a 3D Scene using the given camera                                  *
  *   WW3D::Render -- Render a single render object                                             *
  *   WW3D::End_Render -- Mark the completion of a frame                                        *
- *   WW3D::Sync -- Time sychronization                                                         *
+ *   WW3D::Sync -- Time synchronization                                                        *
  *   WW3D::Set_Ext_Swap_Interval -- Sets the swap interval the device should aim sync for.     *
  *   WW3D::Get_Ext_Swap_Interval -- Queries the swap interval the device is aiming sync for.   *
  *   WW3D::Get_Polygon_Mode -- returns the current rendering mode                              *
@@ -117,6 +117,7 @@
 #include "formconv.h"
 #include "animatedsoundmgr.h"
 #include "static_sort_list.h"
+#include "shdlib.h"
 #include "framgrab.h"
 #include "Lib/BaseType.h"
 
@@ -1061,10 +1062,12 @@ WW3DErrorType WW3D::Render(
  *                                                                                             *
  * HISTORY:                                                                                    *
  *   4/17/2001  gth : Created.                                                                 *
+ * 07/01/02 KM Scalable shader library integration				                               *
  *=============================================================================================*/
 void WW3D::Flush(RenderInfoClass & rinfo)
 {
 	TheDX8MeshRenderer.Flush();
+	SHD_FLUSH;
 	WW3D::Render_And_Clear_Static_Sort_Lists(rinfo);	//draws things like water
 
 	SortingRendererClass::Flush();
@@ -1177,7 +1180,7 @@ void WW3D::Update_Logic_Frame_Time(float milliseconds)
 
 
 /***********************************************************************************************
- * WW3D::Sync -- Time sychronization                                                           *
+ * WW3D::Sync -- Time synchronization                                                          *
  *                                                                                             *
  * INPUT:                                                                                      *
  *                                                                                             *
@@ -1254,7 +1257,7 @@ void WW3D::Set_Collision_Box_Display_Mask(int mask)
 }
 
 /***********************************************************************************************
- * WW3D::Get_Collision_Box_Display_Mask -- returns the current display mask for collision boxe *
+ * WW3D::Get_Collision_Box_Display_Mask -- returns the current display mask for collision box  *
  *                                                                                             *
  * INPUT:                                                                                      *
  *                                                                                             *

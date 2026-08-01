@@ -549,6 +549,9 @@ def main():
     #unify_file_lib(Game.ZEROHOUR, "Libraries/Source/WWVegas/WW3D2/sortingrenderer.h", Game.CORE, "Libraries/Source/WWVegas/WW3D2/sortingrenderer.h")
     #unify_file_lib(Game.ZEROHOUR, "Libraries/Source/WWVegas/WW3D2/sortingrenderer.cpp", Game.CORE, "Libraries/Source/WWVegas/WW3D2/sortingrenderer.cpp")
 
+    #unify_file_lib(Game.ZEROHOUR, "Libraries/Source/WWVegas/WW3D2/ww3d.h", Game.CORE, "Libraries/Source/WWVegas/WW3D2/ww3d.h")
+    #unify_file_lib(Game.ZEROHOUR, "Libraries/Source/WWVegas/WW3D2/ww3d.cpp", Game.CORE, "Libraries/Source/WWVegas/WW3D2/ww3d.cpp")
+
     #unify_move_file(Game.ZEROHOUR, "GameEngine/Include/Common/AcademyStats.h", Game.CORE, "GameEngine/Include/Common/AcademyStats.h")
     #unify_move_file(Game.ZEROHOUR, "GameEngine/Source/Common/RTS/AcademyStats.cpp", Game.CORE, "GameEngine/Source/Common/RTS/AcademyStats.cpp")
 

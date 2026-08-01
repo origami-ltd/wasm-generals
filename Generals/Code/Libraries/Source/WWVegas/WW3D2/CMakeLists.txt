@@ -220,8 +220,8 @@ set(WW3D2_SRC
     #w3derr.h
     #w3dexclusionlist.cpp
     #w3dexclusionlist.h
-    ww3d.cpp
-    ww3d.h
+#    ww3d.cpp
+#    ww3d.h
     #ww3dformat.cpp
     #ww3dformat.h
     #ww3dids.h

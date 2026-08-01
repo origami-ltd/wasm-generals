@@ -238,13 +238,17 @@ set_target_properties(z_ww3d2 PROPERTIES OUTPUT_NAME ww3d2)
 
 target_sources(z_ww3d2 PRIVATE ${WW3D2_SRC})
 
+target_include_directories(z_ww3d2 PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 target_compile_definitions(z_ww3d2 PRIVATE
     $<$<BOOL:${IS_VS6_BUILD}>:WINVER=0x0500>
 )
 
 target_precompile_headers(z_ww3d2 PRIVATE
     [["Utility/CppMacros.h"]] # Must be first, to be removed when abandoning VC6
-    [["WW3D2/dx8wrapper.h"]]
+    [["dx8wrapper.h"]]
     [["WWLib/always.h"]]
     [["WWLib/STLUtils.h"]]
     [["WWLib/win.h"]]

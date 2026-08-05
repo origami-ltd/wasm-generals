@@ -850,16 +850,14 @@
             renderCopy();
         });
 
-        // GeneralsX @feature Codex 05/08/2026 Fullscreen captures the mouse for edge scrolling.
+        // GeneralsX @bugfix Codex 05/08/2026 Never request pointer lock: the browser hides the cursor while locked,
+        // and this build draws the cursor through the OS (RM_WINDOWS), so locking makes the pointer vanish.
+        // Fullscreen already keeps the mouse inside the game because the canvas covers the screen.
         function enterFullscreen() {
             if (Module.requestFullscreen) {
-                Module.requestFullscreen(!isAutomatedTest, false);
+                Module.requestFullscreen(false, false);
             } else {
-                canvas.requestFullscreen().then(() => {
-                    if (!isAutomatedTest) {
-                        canvas.requestPointerLock?.();
-                    }
-                }).catch(() => {});
+                canvas.requestFullscreen().catch(() => {});
             }
         }
 
@@ -888,12 +886,7 @@
         });
 
         canvas.addEventListener("contextmenu", (event) => event.preventDefault());
-        canvas.addEventListener("pointerdown", () => {
-            canvas.focus();
-            if (!document.pointerLockElement && !isAutomatedTest && canvasShell.dataset.ready === "true") {
-                canvas.requestPointerLock?.();
-            }
-        });
+        canvas.addEventListener("pointerdown", () => canvas.focus());
 
         const consoleCommands = [
             "args",

@@ -521,29 +521,15 @@
         const runtimeQuery = new URLSearchParams(window.location.search);
         const runtimeArguments = ["-noshellmap"];
 
-        // GeneralsX @feature Codex 05/08/2026 Track WebAudio contexts so the Sound button can hard-mute.
-        const audioContexts = [];
-        let soundMuted = runtimeQuery.get("mute") === "1";
-        const NativeAudioContext = window.AudioContext;
-        window.AudioContext = function (...args) {
-            const context = new NativeAudioContext(...args);
-            audioContexts.push(context);
-            if (soundMuted) {
-                context.suspend();
-            }
-            return context;
-        };
-        window.AudioContext.prototype = NativeAudioContext.prototype;
+        // GeneralsX @bugfix Codex 05/08/2026 Audio off by default: with the audio manager live the engine never
+        // steps logic in the browser (black screen). Opt in with ?sound=1 until that engine bug is fixed.
+        // Mute goes through the engine's own audio manager; NEVER wrap window.AudioContext here.
+        const soundEnabled = runtimeQuery.get("sound") === "1";
+        let soundMuted = !soundEnabled;
 
         function setSoundMuted(muted) {
             soundMuted = muted;
-            for (const context of audioContexts) {
-                if (muted) {
-                    context.suspend();
-                } else {
-                    context.resume();
-                }
-            }
+            Module._GeneralsXSetAudioMuted?.(muted ? 1 : 0);
             for (const button of document.querySelectorAll("#sound, #sound-overlay")) {
                 button.dataset.copy = muted ? "soundOff" : "soundOn";
             }
@@ -595,16 +581,11 @@
             || /^[1-9]\d*$/.test(pauseFrame || "")
             || runtimeQuery.get("test") === "1"
             || isBotStress;
-        if (isAutomatedTest) {
+        if (isAutomatedTest || !soundEnabled) {
             runtimeArguments.push("-noaudio");
         }
-        // GeneralsX @feature Codex 05/08/2026 Widescreen by default for normal play; parity paths keep 1024x768.
-        if (!isAutomatedTest && !isReplayPath && !isReferenceState) {
-            const isValidRes = (value) => /^\d{3,4}$/.test(value || "");
-            const xres = isValidRes(runtimeQuery.get("xres")) ? runtimeQuery.get("xres") : "1280";
-            const yres = isValidRes(runtimeQuery.get("yres")) ? runtimeQuery.get("yres") : "720";
-            runtimeArguments.push("-win", "-xres", xres, "-yres", yres);
-        }
+        // GeneralsX @bugfix Codex 05/08/2026 No -win/-xres/-yres on normal play: CLI resolution args black out the
+        // renderer in this build. Widescreen needs proper display-mode support in the engine first.
         if (isReplayPath || isReferenceState) {
             runtimeArguments.push("-win", "-xres", "1024", "-yres", "768");
             if (isReplayPath) {
@@ -884,10 +865,20 @@
 
         document.getElementById("fullscreen").addEventListener("click", enterFullscreen);
         document.getElementById("fullscreen-overlay").addEventListener("click", enterFullscreen);
-        document.getElementById("sound").addEventListener("click", () => setSoundMuted(!soundMuted));
-        document.getElementById("sound-overlay").addEventListener("click", () => setSoundMuted(!soundMuted));
-        if (soundMuted) {
-            setSoundMuted(true);
+        function toggleSound() {
+            if (!soundEnabled) {
+                const query = new URLSearchParams(window.location.search);
+                query.set("sound", "1");
+                window.location.search = query.toString();
+                return;
+            }
+            setSoundMuted(!soundMuted);
+        }
+
+        document.getElementById("sound").addEventListener("click", toggleSound);
+        document.getElementById("sound-overlay").addEventListener("click", toggleSound);
+        for (const button of document.querySelectorAll("#sound, #sound-overlay")) {
+            button.dataset.copy = soundMuted ? "soundOff" : "soundOn";
         }
 
         document.addEventListener("fullscreenchange", () => {
@@ -974,10 +965,10 @@
                         queuedReplays: Module._GeneralsXQueuedReplayCount?.() ?? 0
                     });
                 case "status":
-                    return `status=${statusKey} logic=${Module._GeneralsXLogicFrame?.() ?? 0} frame=${canvas.dataset.referenceFrame || "running"} audio=${isAutomatedTest ? "muted" : "enabled"} cursor=${document.pointerLockElement ? "captured" : "free"} result=${window.generalsXBotMatchResult ? "ready" : "pending"} args=${runtimeArguments.join(" ")}`;
+                    return `status=${statusKey} logic=${Module._GeneralsXLogicFrame?.() ?? 0} frame=${canvas.dataset.referenceFrame || "running"} audio=${soundEnabled ? (soundMuted ? "muted" : "on") : "off"} cursor=${document.pointerLockElement ? "captured" : "free"} result=${window.generalsXBotMatchResult ? "ready" : "pending"} args=${runtimeArguments.join(" ")}`;
                 case "mute":
-                    if (isAutomatedTest) {
-                        return "Audio is muted for this test run.";
+                    if (!soundEnabled) {
+                        return "Audio is disabled for this session. Reload with ?sound=1 to enable it.";
                     }
                     setSoundMuted(!soundMuted);
                     return soundMuted ? "Sound muted." : "Sound on.";

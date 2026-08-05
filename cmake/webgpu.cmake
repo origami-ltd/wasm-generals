@@ -19,8 +19,8 @@ target_link_options(webgpu_runtime INTERFACE
 	"-sASYNCIFY=1"
     # GeneralsX @port Codex 04/08/2026 Match the native process stack required by legacy global-data initialization.
     "-sSTACK_SIZE=1048576"
-    # GeneralsX @build Codex 05/08/2026 Fixed 4 GiB heap: the wasm32 cap, no growth so heap views never detach
-    # (ALLOW_MEMORY_GROWTH broke emdawnwebgpu uploads → black canvas, and resizable buffers broke TextDecoder).
-    # ponytail: going past 4 GiB requires a MEMORY64 rebuild. Pages are committed lazily, so RSS only grows with use.
-    "-sINITIAL_MEMORY=4294901760"
+    # GeneralsX @build Codex 05/08/2026 Fixed 2 GiB heap. Do NOT raise: growth detaches emdawnwebgpu heap views
+    # (black canvas), resizable buffers break TextDecoder, and >2GiB heaps hit signed-pointer casts all over this
+    # 2003 codebase (also black canvas). More memory = MEMORY64 rebuild + pointer audit, tracked separately.
+    "-sINITIAL_MEMORY=2147483648"
 )

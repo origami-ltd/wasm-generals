@@ -59,6 +59,8 @@
 #include "Common/GlobalData.h"
 #include "Common/MessageStream.h"
 #include "GameLogic/VictoryConditions.h"
+#include "Common/AudioAffect.h"
+#include "Common/GameAudio.h"
 #include "GameClient/MapUtil.h"
 #include "GameNetwork/LANAPICallbacks.h"
 #include "GameNetwork/NetworkInterface.h"
@@ -145,6 +147,16 @@ extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXLanAccept()
 	if (TheLAN == nullptr || TheLAN->GetMyGame() == nullptr)
 		return FALSE;
 	TheLAN->RequestAccept();
+	return TRUE;
+}
+
+// GeneralsX @feature Codex 05/08/2026 Engine-level mute for the browser Sound button.
+// Never patch window.AudioContext for this: doing so wedges MiniAudio init and the game never starts.
+extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXSetAudioMuted(Int muted)
+{
+	if (TheAudio == nullptr)
+		return FALSE;
+	TheAudio->setOn(muted ? FALSE : TRUE, AudioAffect_All);
 	return TRUE;
 }
 

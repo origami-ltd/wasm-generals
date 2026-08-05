@@ -1222,6 +1222,56 @@
 
         const modulePreRun = [];
         const modulePostRun = [];
+
+        // GeneralsX @feature Codex 05/08/2026 The game is configured by Options.ini, not the command line, so the
+        // user data dir has to survive a page load. IDBFS backs it with browser storage; syncfs moves it both ways.
+        const generalsXUserDataPath = "/home/web_user/.local/share/GeneralsX/GeneralsZH";
+        const defaultOptionsIni = "Resolution = 1280 720\n";
+        let userDataReady = false;
+
+        function persistUserData() {
+            if (!userDataReady) {
+                return;
+            }
+            try {
+                FS.syncfs(false, (error) => {
+                    if (error) {
+                        appendOutput([`User data save failed: ${error}`], "error");
+                    }
+                });
+            } catch (error) {
+                // runtime already torn down
+            }
+        }
+
+        if (!isAutomatedTest) {
+            modulePreRun.push(() => {
+                const dependency = "generalsx-user-data";
+                addRunDependency(dependency);
+                FS.mkdirTree(generalsXUserDataPath);
+                FS.mount(IDBFS, {}, generalsXUserDataPath);
+                FS.syncfs(true, (error) => {
+                    if (error) {
+                        appendOutput([`User data restore failed: ${error}`], "error");
+                    }
+                    const optionsPath = `${generalsXUserDataPath}/Options.ini`;
+                    let hasOptions = true;
+                    try {
+                        FS.stat(optionsPath);
+                    } catch (missing) {
+                        hasOptions = false;
+                    }
+                    // Escape hatch: ?resetOptions=1 restores the shipped defaults if in-game settings go bad.
+                    if (!hasOptions || runtimeQuery.get("resetOptions") === "1") {
+                        FS.writeFile(optionsPath, defaultOptionsIni);
+                    }
+                    userDataReady = true;
+                    removeRunDependency(dependency);
+                });
+            });
+            window.setInterval(persistUserData, 10000);
+            window.addEventListener("pagehide", persistUserData);
+        }
         if (hasReferenceSettings || isBotStress || isReplayStress) {
             modulePreRun.push(() => {
                 const userDataPath = "/home/web_user/.local/share/GeneralsX/GeneralsZH";

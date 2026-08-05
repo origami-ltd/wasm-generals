@@ -23,4 +23,6 @@ target_link_options(webgpu_runtime INTERFACE
     # (black canvas), resizable buffers break TextDecoder, and >2GiB heaps hit signed-pointer casts all over this
     # 2003 codebase (also black canvas). More memory = MEMORY64 rebuild + pointer audit, tracked separately.
     "-sINITIAL_MEMORY=2147483648"
+    # GeneralsX @feature Codex 05/08/2026 IDBFS keeps the user data dir (Options.ini, saves) across page loads.
+    "-lidbfs.js"
 )

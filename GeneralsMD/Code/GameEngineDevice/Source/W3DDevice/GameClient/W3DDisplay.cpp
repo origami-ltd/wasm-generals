@@ -565,6 +565,17 @@ static void SDL3_ApplyWindowModeForRenderConfig(Bool windowed, Int renderWidth, 
 	extern SDL_Window* TheSDL3Window;
 	if (!TheSDL3Window) return;
 
+#if defined(__EMSCRIPTEN__)
+	// GeneralsX @bugfix Codex 05/08/2026 The browser has no native fullscreen for the canvas: SDL_SetWindowFullscreen
+	// always fails here and the canvas would stay at its 1024x768 creation size while the engine renders at the
+	// Options.ini resolution, which shows up as a black canvas. Always size the canvas to the render resolution;
+	// the page's Fullscreen button uses the browser Fullscreen API to scale it.
+	if (!SDL_SetWindowSize(TheSDL3Window, renderWidth, renderHeight)) {
+		fprintf(stderr, "WARNING: SDL_SetWindowSize(%d,%d) failed: %s\n", renderWidth, renderHeight, SDL_GetError());
+	}
+	return;
+#endif
+
 	if (!windowed) {
 		if (!SDL_SetWindowFullscreen(TheSDL3Window, false)) {
 			fprintf(stderr, "WARNING: SDL_SetWindowFullscreen(false) failed: %s\n", SDL_GetError());

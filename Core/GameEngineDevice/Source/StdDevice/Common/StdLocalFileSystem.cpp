@@ -82,10 +82,12 @@ static std::filesystem::path fixFilenameFromWindowsPath(const Char *filename, In
 				return assetRootPath;
 			}
 
-			#ifdef __linux__
+			#if defined(__linux__) || defined(__EMSCRIPTEN__)
 			// GeneralsX @bugfix BenderAI 11/05/2026 Linux: resolve case-insensitive paths from asset root.
 			// Some cursor files are lowercase on disk (e.g. sccpointer.ani) while INI references mixed-case names.
 			// The existing case-insensitive traversal below only checks cwd, not the asset root fallback.
+			// GeneralsX @bugfix Codex 05/08/2026 Emscripten needs this too (MEMFS is case-sensitive and does not
+			// define __linux__): without it sccpointer.ani never loads and the game renders no custom cursor.
 			std::filesystem::path assetRootFixed = s_assetFallbackPath;
 			std::filesystem::path assetRootCurrent = s_assetFallbackPath;
 			bool assetRootFound = true;

@@ -46,8 +46,12 @@ static void drawFramerateBar();
 #endif
 #include <time.h>
 #include <vector>
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
+#include "Common/CommandLine.h"
 #include "Common/FramePacer.h"
 #include "Common/ThingFactory.h"
 #include "Common/GlobalData.h"
@@ -1969,10 +1973,18 @@ AGAIN:
 		}
 	}
 
-	WW3D::Update_Logic_Frame_Time(TheFramePacer->getLogicTimeStepMilliseconds());
+	if (TheCommandLinePauseFrame != 0)
+	{
+		WW3D::Set_Logic_Time_Milliseconds(static_cast<UnsignedInt>(
+			(static_cast<uint64_t>(TheGameLogic->getFrame()) * 1000U) / LOGICFRAMES_PER_SECOND));
+	}
+	else
+	{
+		WW3D::Update_Logic_Frame_Time(TheFramePacer->getLogicTimeStepMilliseconds());
 
-	// TheSuperHackers @info This binds the WW3D update to the logic update.
-	WW3D::Sync(TheGameLogic->hasUpdated());
+		// TheSuperHackers @info This binds the WW3D update to the logic update.
+		WW3D::Sync(TheGameLogic->hasUpdated());
+	}
 
 	static Int now;
 	now=timeGetTime();
@@ -2123,6 +2135,42 @@ AGAIN:
 #endif
 				// render is all done!
 				WW3D::End_Render();
+				// GeneralsX @feature Codex 04/08/2026 Capture the native authority image for exact-frame browser comparison.
+				static UnsignedInt captureFrame = 0;
+				static UnsignedInt captureRenderCount = 0;
+				if (TheCommandLineCaptureFrameCount != 0 && TheCommandLinePauseFrame != 0 && TheGameLogic->isInReplayGame()
+					&& TheGameLogic->getFrame() == TheCommandLinePauseFrame)
+				{
+					if (captureFrame != TheGameLogic->getFrame())
+					{
+						captureFrame = TheGameLogic->getFrame();
+						captureRenderCount = 0;
+					}
+					++captureRenderCount;
+					if (captureRenderCount >= TheCommandLineCaptureFrameDelay)
+					{
+					const Coord3D pivot = TheTacticalView->getPosition();
+					const Coord3D camera = TheTacticalView->get3DCameraPosition();
+					const Coord3D direction = TheTacticalView->get3DCameraDirection();
+					fprintf(stderr,
+						"[GeneralsX] VISUAL_CAMERA frame=%u view=%dx%d display=%dx%d pivot=%g,%g,%g camera=%g,%g,%g direction=%g,%g,%g zoom=%g pitch=%g angle=%g fov=%g\n",
+						TheGameLogic->getFrame(), TheTacticalView->getWidth(), TheTacticalView->getHeight(), getWidth(), getHeight(),
+						pivot.x, pivot.y, pivot.z, camera.x, camera.y, camera.z,
+						direction.x, direction.y, direction.z, TheTacticalView->getZoom(),
+						TheTacticalView->getPitch(), TheTacticalView->getAngle(), TheTacticalView->getFieldOfView());
+#if defined(__EMSCRIPTEN__)
+					EM_ASM({
+						if (window.generalsXCaptureReferenceFrame) {
+							window.generalsXCaptureReferenceFrame($0);
+						}
+					}, TheGameLogic->getFrame());
+#else
+					takeScreenShot(SCREENSHOT_PNG, DEFAULT_JPEG_QUALITY);
+#endif
+					TheCommandLineCaptureFrameCount = 0;
+					captureRenderCount = 0;
+					}
+				}
 			}
 			else
 			{

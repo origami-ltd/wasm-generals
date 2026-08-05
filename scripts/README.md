@@ -62,6 +62,7 @@ Utilities for large-scale code refactoring and fixes:
 - `docker-smoke-test-zh.sh` - Quick startup validation (expects crash, checks init output)
 - `run-bundled-game.sh` - Test bundled binary after deployment
 - `collect-flatpak-vulkan-wsi-report.sh` - Collect reproducible Flatpak Vulkan/XCB diagnostics for upstream runtime issues
+- `serve-webgpu.py` - Serve browser artifacts with WebAssembly worker isolation headers
 
 ### `legacy/` - Deprecated & Compatibility
 
@@ -131,6 +132,18 @@ CNC_GENERALS_PATH="/path/to/Generals" \
 ./scripts/build/macos/deploy-macos-zh.sh
 ./scripts/build/macos/run-macos-zh.sh -win
 ```
+
+### Chrome WebAssembly + WebGPU
+
+Configure and build with the `webgpu` preset, then serve the generated files over localhost:
+
+```bash
+cmake --preset webgpu
+cmake --build --preset webgpu --target z_generals
+./scripts/qa/smoke/serve-webgpu.py build/webgpu/GeneralsMD
+```
+
+The browser build accepts only explicitly configured, user-owned game archives. See the [browser runtime guide](../docs/WORKDIR/support/WEBGPU_BROWSER_RUNTIME.md) for toolchain, asset, and Chrome requirements.
 
 ### Windows Cross-Compile (from Linux/macOS)
 

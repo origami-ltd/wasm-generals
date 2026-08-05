@@ -61,8 +61,13 @@ void FramePacer::update()
 {
 	// TheSuperHackers @bugfix xezon 05/08/2025 Re-implements the frame rate limiter
 	// with higher resolution counters to cap the frame rate more accurately to the desired limit.
+	#if defined(__EMSCRIPTEN__)
+	// GeneralsX @port Codex 04/08/2026 Measure browser frames without sleeping inside requestAnimationFrame.
+	m_updateTime = m_frameRateLimit.wait(RenderFpsPreset::UncappedFpsValue);
+	#else
 	const UnsignedInt maxFps = getActualFramesPerSecondLimit();// allowFpsLimit ? getFramesPerSecondLimit() : RenderFpsPreset::UncappedFpsValue;
 	m_updateTime = m_frameRateLimit.wait(maxFps);
+	#endif
 }
 
 void FramePacer::reset()

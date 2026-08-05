@@ -47,6 +47,9 @@
 #if defined(SAGE_USE_FREETYPE) && !defined(_WIN32)
     #include <ft2build.h>
     #include FT_FREETYPE_H
+#endif
+
+#if defined(SAGE_USE_FONTCONFIG)
     #include <fontconfig/fontconfig.h>
 #endif
 
@@ -118,7 +121,9 @@ private:
 	bool							Create_Freetype_Font( const char *font_name );
 	void							Free_Freetype_Font( void );
 	const FontCharsClassCharDataStruct *	Store_Freetype_Char( WCHAR ch );
+#if defined(SAGE_USE_FONTCONFIG)
 	const char *					Locate_Font_FontConfig( const char *font_name );
+#endif
 #endif
 	
 	void							Update_Current_Buffer( int char_width );

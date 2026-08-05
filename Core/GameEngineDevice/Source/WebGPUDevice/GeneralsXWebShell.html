@@ -1,0 +1,1322 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>GeneralsX · Browser runtime</title>
+    <link rel="icon" href="data:,">
+    <style>
+        :root {
+            --gx-background: #111315;
+            --gx-surface: #1c2024;
+            --gx-surface-raised: #282d32;
+            --gx-border: #626a72;
+            --gx-text: #f4f1e8;
+            --gx-text-muted: #c0c6ca;
+            --gx-accent: #e1a94b;
+            --gx-ready: #77c7b4;
+            --gx-error: #ff8f82;
+            --gx-cut: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            min-height: 100%;
+            margin: 0;
+            background: var(--gx-background);
+            color: var(--gx-text);
+        }
+
+        body {
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        button,
+        select {
+            min-height: 44px;
+            border: 1px solid var(--gx-border);
+            border-radius: 0;
+            background: var(--gx-surface-raised);
+            color: var(--gx-text);
+            font: inherit;
+        }
+
+        button {
+            --gx-cut-border: var(--gx-border);
+            --gx-cut-surface: var(--gx-surface-raised);
+            padding: 0 18px;
+            cursor: pointer;
+            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+        }
+
+        button:hover {
+            --gx-cut-border: var(--gx-accent);
+        }
+
+        button:focus-visible,
+        select:focus-visible,
+        canvas:focus-visible,
+        summary:focus-visible {
+            outline: 3px solid var(--gx-accent);
+            outline-offset: 3px;
+        }
+
+        select {
+            padding: 0 38px 0 12px;
+        }
+
+        .app-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+            min-height: 76px;
+            padding: 14px clamp(16px, 3vw, 40px);
+            border-bottom: 1px solid var(--gx-border);
+            background: var(--gx-surface);
+        }
+
+        .identity {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+        }
+
+        .identity h1 {
+            margin: 0;
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: clamp(22px, 3vw, 30px);
+            letter-spacing: 0.04em;
+        }
+
+        .identity p {
+            margin: 0;
+            color: var(--gx-text-muted);
+            font-size: 14px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .language-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .language-control label {
+            color: var(--gx-text-muted);
+            font-size: 14px;
+        }
+
+        main {
+            width: min(1440px, 100%);
+            margin: 0 auto;
+            padding: clamp(14px, 2vw, 28px);
+        }
+
+        .runtime-bar {
+            --gx-cut-border: var(--gx-border);
+            --gx-cut-surface: var(--gx-surface);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            min-height: 52px;
+            margin-bottom: 14px;
+            padding: 8px 14px;
+            clip-path: polygon(0 0, calc(100% - var(--gx-cut)) 0, 100% var(--gx-cut), 100% 100%, 0 100%);
+        }
+
+        .status-group,
+        .capabilities {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        #status {
+            color: var(--gx-text);
+            font-size: 14px;
+            font-weight: 650;
+        }
+
+        .capability {
+            min-height: 30px;
+            padding: 5px 9px;
+            border-left: 3px solid var(--gx-border);
+            color: var(--gx-text-muted);
+            background: var(--gx-surface-raised);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 12px;
+        }
+
+        .capability[data-state="ready"] {
+            border-color: var(--gx-ready);
+            color: var(--gx-text);
+        }
+
+        .capability[data-state="error"] {
+            border-color: var(--gx-error);
+        }
+
+        progress {
+            width: min(220px, 24vw);
+            height: 8px;
+            border: 0;
+            border-radius: 0;
+            background: var(--gx-surface-raised);
+        }
+
+        progress::-webkit-progress-bar {
+            background: var(--gx-surface-raised);
+        }
+
+        progress::-webkit-progress-value {
+            background: var(--gx-accent);
+        }
+
+        .canvas-shell {
+            --gx-cut-border: var(--gx-border);
+            --gx-cut-surface: #000;
+            position: relative;
+            display: grid;
+            place-items: center;
+            min-height: 240px;
+            overflow: hidden;
+            clip-path: polygon(0 0, calc(100% - var(--gx-cut)) 0, 100% var(--gx-cut), 100% 100%, 0 100%);
+        }
+
+        canvas {
+            display: block;
+            max-width: 100%;
+            max-height: calc(100vh - 190px);
+            width: auto;
+            height: auto;
+            border: 0;
+            background: #000;
+        }
+
+        .overlay-controls {
+            position: absolute;
+            z-index: 3;
+            top: 14px;
+            right: 22px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .overlay-controls button {
+            --gx-cut-surface: rgb(18 20 22 / 88%);
+            --gx-cut-border: var(--gx-accent);
+            color: var(--gx-accent);
+            font-weight: 650;
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .overlay-controls button:hover {
+            color: var(--gx-text);
+        }
+
+        .canvas-shell[data-ready="false"] .overlay-controls {
+            display: none;
+        }
+
+        .loading-layer {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-content: center;
+            gap: 12px;
+            padding: 24px;
+            background: var(--gx-background);
+            text-align: center;
+        }
+
+        .canvas-shell[data-ready="true"] .loading-layer {
+            display: none;
+        }
+
+        .developer-console {
+            --gx-cut-border: var(--gx-border);
+            --gx-cut-surface: rgb(9 10 11 / 96%);
+            position: absolute;
+            z-index: 4;
+            right: 12px;
+            bottom: 12px;
+            left: 12px;
+            max-height: min(46vh, 420px);
+            padding: 12px;
+            clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+        }
+
+        button,
+        .runtime-bar,
+        .canvas-shell,
+        .developer-console {
+            isolation: isolate;
+            overflow: hidden;
+            border: 0;
+            background: var(--gx-cut-border);
+        }
+
+        button::before,
+        .runtime-bar::before,
+        .canvas-shell::before,
+        .developer-console::before {
+            position: absolute;
+            z-index: -1;
+            inset: 1px;
+            clip-path: inherit;
+            background: var(--gx-cut-surface);
+            content: "";
+        }
+
+        button {
+            position: relative;
+        }
+
+        .developer-console[hidden] {
+            display: none;
+        }
+
+        .developer-console-output {
+            min-height: 64px;
+            max-height: min(34vh, 310px);
+            margin: 0 0 10px;
+            overflow: auto;
+            color: var(--gx-text-muted);
+            font: inherit;
+            white-space: pre-wrap;
+        }
+
+        .developer-console-form {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px;
+            align-items: center;
+            color: var(--gx-accent);
+        }
+
+        #developer-console-input {
+            width: 100%;
+            min-height: 38px;
+            border: 0;
+            border-bottom: 1px solid var(--gx-border);
+            border-radius: 0;
+            outline: 0;
+            background: transparent;
+            color: var(--gx-text);
+            font: inherit;
+        }
+
+        #developer-console-input:focus {
+            border-color: var(--gx-accent);
+        }
+
+        .loading-layer strong {
+            color: var(--gx-text);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 18px;
+        }
+
+        .loading-layer span {
+            color: var(--gx-text-muted);
+        }
+
+        details {
+            margin-top: 14px;
+            border: 1px solid var(--gx-border);
+            background: var(--gx-surface);
+        }
+
+        summary {
+            min-height: 44px;
+            padding: 12px 14px;
+            cursor: pointer;
+            color: var(--gx-text-muted);
+        }
+
+        #output {
+            display: block;
+            width: 100%;
+            min-height: 150px;
+            margin: 0;
+            padding: 14px;
+            resize: vertical;
+            border: 0;
+            border-top: 1px solid var(--gx-border);
+            border-radius: 0;
+            outline: 0;
+            background: #090a0b;
+            color: var(--gx-text);
+            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+            font-size: 12px;
+        }
+
+        @media (max-width: 760px) {
+            .app-header,
+            .identity,
+            .runtime-bar {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .app-header,
+            .runtime-bar {
+                gap: 12px;
+            }
+
+            .header-controls,
+            .language-control,
+            .status-group,
+            .capabilities {
+                flex-wrap: wrap;
+            }
+
+            .header-controls > *,
+            .language-control select {
+                flex: 1;
+            }
+
+            progress {
+                width: 100%;
+            }
+
+            canvas {
+                max-height: none;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="app-header">
+        <div class="identity">
+            <h1>GeneralsX</h1>
+            <p data-copy="subtitle"></p>
+        </div>
+        <div class="header-controls">
+            <div class="language-control">
+                <label for="language" data-copy="language"></label>
+                <select id="language">
+                    <option value="en">English</option>
+                    <option value="pt-BR">Português (Brasil)</option>
+                </select>
+            </div>
+            <button id="sound" type="button" data-copy="soundOn"></button>
+            <button id="fullscreen" type="button" data-copy="fullscreen"></button>
+        </div>
+    </header>
+    <main>
+        <section class="runtime-bar" aria-labelledby="status">
+            <div class="status-group">
+                <span id="status" role="status" aria-live="polite"></span>
+                <progress id="progress" max="100" value="0" hidden></progress>
+            </div>
+            <div class="capabilities" aria-label="Runtime capabilities">
+                <span class="capability" id="wasm-capability"></span>
+                <span class="capability" id="webgpu-capability"></span>
+            </div>
+        </section>
+        <section class="canvas-shell" id="canvas-shell" data-ready="false">
+            <canvas id="canvas" tabindex="0"></canvas>
+            <div class="overlay-controls">
+                <button id="sound-overlay" type="button" data-copy="soundOn"></button>
+                <button id="fullscreen-overlay" type="button" data-copy="fullscreen"></button>
+            </div>
+            <div class="loading-layer" id="loading-layer">
+                <strong data-copy="loadingTitle"></strong>
+                <span data-copy="localData"></span>
+            </div>
+            <section class="developer-console" id="developer-console" hidden>
+                <pre class="developer-console-output" id="developer-console-output" aria-live="polite"></pre>
+                <form class="developer-console-form" id="developer-console-form">
+                    <span aria-hidden="true">&gt;</span>
+                    <input id="developer-console-input" autocomplete="off" autocapitalize="off" spellcheck="false">
+                </form>
+            </section>
+        </section>
+        <details>
+            <summary data-copy="runtimeLog"></summary>
+            <textarea id="output" readonly aria-label="Runtime log"></textarea>
+        </details>
+    </main>
+    <script>
+        const copy = {
+            en: {
+                title: "GeneralsX · Browser runtime",
+                subtitle: "WebAssembly + WebGPU",
+                language: "Language",
+                fullscreen: "Fullscreen",
+                soundOn: "Sound on",
+                soundOff: "Sound off",
+                loadingTitle: "Preparing the battlefield",
+                localData: "Uses game data selected from your local, legally owned installation.",
+                runtimeLog: "Runtime log",
+                downloading: "Loading game data…",
+                preparing: "Preparing runtime…",
+                running: "Running",
+                failed: "Runtime failed. Open the runtime log for details.",
+                wasmReady: "WASM ready",
+                wasmMissing: "WASM unavailable",
+                webgpuReady: "WebGPU ready",
+                webgpuMissing: "WebGPU unavailable",
+                consoleLabel: "Developer console",
+                consoleHint: "Type help. Tab completes commands. Up and Down browse history."
+            },
+            "pt-BR": {
+                title: "GeneralsX · Execução no navegador",
+                subtitle: "WebAssembly + WebGPU",
+                language: "Idioma",
+                fullscreen: "Tela cheia",
+                soundOn: "Som ligado",
+                soundOff: "Som desligado",
+                loadingTitle: "Preparando o campo de batalha",
+                localData: "Usa dados do jogo selecionados da sua instalação local e legalmente adquirida.",
+                runtimeLog: "Registro de execução",
+                downloading: "Carregando dados do jogo…",
+                preparing: "Preparando a execução…",
+                running: "Em execução",
+                failed: "A execução falhou. Abra o registro para ver os detalhes.",
+                wasmReady: "WASM disponível",
+                wasmMissing: "WASM indisponível",
+                webgpuReady: "WebGPU disponível",
+                webgpuMissing: "WebGPU indisponível",
+                consoleLabel: "Console de desenvolvimento",
+                consoleHint: "Digite help. Tab completa comandos. Cima e Baixo navegam no histórico."
+            }
+        };
+
+        const canvas = document.getElementById("canvas");
+        const canvasShell = document.getElementById("canvas-shell");
+        const statusElement = document.getElementById("status");
+        const progressElement = document.getElementById("progress");
+        const outputElement = document.getElementById("output");
+        const developerConsole = document.getElementById("developer-console");
+        const developerConsoleOutput = document.getElementById("developer-console-output");
+        const developerConsoleForm = document.getElementById("developer-console-form");
+        const developerConsoleInput = document.getElementById("developer-console-input");
+        const languageElement = document.getElementById("language");
+        const wasmCapability = document.getElementById("wasm-capability");
+        const webgpuCapability = document.getElementById("webgpu-capability");
+        const runtimeQuery = new URLSearchParams(window.location.search);
+        const runtimeArguments = ["-noshellmap"];
+
+        // GeneralsX @feature Codex 05/08/2026 Track WebAudio contexts so the Sound button can hard-mute.
+        const audioContexts = [];
+        let soundMuted = runtimeQuery.get("mute") === "1";
+        const NativeAudioContext = window.AudioContext;
+        window.AudioContext = function (...args) {
+            const context = new NativeAudioContext(...args);
+            audioContexts.push(context);
+            if (soundMuted) {
+                context.suspend();
+            }
+            return context;
+        };
+        window.AudioContext.prototype = NativeAudioContext.prototype;
+
+        function setSoundMuted(muted) {
+            soundMuted = muted;
+            for (const context of audioContexts) {
+                if (muted) {
+                    context.suspend();
+                } else {
+                    context.resume();
+                }
+            }
+            for (const button of document.querySelectorAll("#sound, #sound-overlay")) {
+                button.dataset.copy = muted ? "soundOff" : "soundOn";
+            }
+            renderCopy();
+        }
+        const replayPath = runtimeQuery.get("replay");
+        const pauseFrame = runtimeQuery.get("pauseFrame");
+        const captureFrameDelay = runtimeQuery.get("captureFrameDelay");
+        const captureFrameCount = runtimeQuery.get("captureFrameCount");
+        const saveStateFrame = runtimeQuery.get("saveStateFrame");
+        const saveState = runtimeQuery.get("saveState");
+        const maxCameraHeight = runtimeQuery.get("maxCameraHeight");
+        const minCameraHeight = runtimeQuery.get("minCameraHeight");
+        const terrainDrawDistanceScale = runtimeQuery.get("terrainDrawDistanceScale");
+        const staticGameLOD = runtimeQuery.get("staticGameLOD");
+        const shadowVolumes = runtimeQuery.get("shadowVolumes");
+        const isBotStress = runtimeQuery.get("stress") === "bots";
+        const replaySpeed = /^(?:[1-9]|10)$/.test(runtimeQuery.get("replaySpeed") || "")
+            ? runtimeQuery.get("replaySpeed") : "1";
+        const replayCheckpointInterval = /^[1-9]\d*$/.test(runtimeQuery.get("replayCheckpointInterval") || "")
+            ? runtimeQuery.get("replayCheckpointInterval") : "";
+        const defaultStressMap = "maps\\alpine assault\\alpine assault.map";
+        const stressMapCandidate = runtimeQuery.get("stressMap") || defaultStressMap;
+        const stressFactionCandidate = runtimeQuery.get("stressFaction") || "FactionAmerica";
+        const botStressMap = /^[A-Za-z0-9 _/\\.-]+$/.test(stressMapCandidate) && !stressMapCandidate.includes("..")
+            ? stressMapCandidate : defaultStressMap;
+        const botStressFaction = /^[A-Za-z0-9_]+$/.test(stressFactionCandidate)
+            ? stressFactionCandidate : "FactionAmerica";
+        const botStressSeed = /^[1-9]\d*$/.test(runtimeQuery.get("stressSeed") || "")
+            ? runtimeQuery.get("stressSeed") : "20260804";
+        const botStressFrames = /^[1-9]\d*$/.test(runtimeQuery.get("stressFrames") || "")
+            ? runtimeQuery.get("stressFrames") : "27000";
+        const botStressSpeed = /^(?:[1-9]|10)$/.test(runtimeQuery.get("stressSpeed") || "")
+            ? runtimeQuery.get("stressSpeed") : "10";
+        const isReplayPath = /^\/GeneralsReplays\/[A-Za-z0-9_.-]+\.rep$/.test(replayPath || "");
+        const isReplayStress = isReplayPath && replaySpeed !== "1";
+        const isReferenceReplay = replayPath === "/GeneralsReplays/visual-reference.rep";
+        const isAutomatedLan = runtimeQuery.get("lan") === "1" && runtimeQuery.get("test") === "1";
+        const saveStateUrl = saveState ? new URL(saveState, window.location.href) : null;
+        const isReferenceState = saveStateUrl?.origin === window.location.origin
+            && saveStateUrl.pathname.endsWith("/GeneralsXParity.sav");
+        const isPositiveReal = (value) => /^[1-9]\d*(?:\.\d+)?$/.test(value || "");
+        const hasReferenceSettings = (isReferenceReplay || isReferenceState)
+            && isPositiveReal(maxCameraHeight)
+            && isPositiveReal(minCameraHeight)
+            && isPositiveReal(terrainDrawDistanceScale)
+            && ["Low", "Medium", "High", "VeryHigh"].includes(staticGameLOD);
+        const isAutomatedTest = isReferenceState
+            || /^[1-9]\d*$/.test(pauseFrame || "")
+            || runtimeQuery.get("test") === "1"
+            || isBotStress;
+        if (isAutomatedTest) {
+            runtimeArguments.push("-noaudio");
+        }
+        // GeneralsX @feature Codex 05/08/2026 Widescreen by default for normal play; parity paths keep 1024x768.
+        if (!isAutomatedTest && !isReplayPath && !isReferenceState) {
+            const isValidRes = (value) => /^\d{3,4}$/.test(value || "");
+            const xres = isValidRes(runtimeQuery.get("xres")) ? runtimeQuery.get("xres") : "1280";
+            const yres = isValidRes(runtimeQuery.get("yres")) ? runtimeQuery.get("yres") : "720";
+            runtimeArguments.push("-win", "-xres", xres, "-yres", yres);
+        }
+        if (isReplayPath || isReferenceState) {
+            runtimeArguments.push("-win", "-xres", "1024", "-yres", "768");
+            if (isReplayPath) {
+                runtimeArguments.push("-replay", replayPath, "-replayspeed", replaySpeed);
+                if (replayCheckpointInterval) {
+                    runtimeArguments.push("-replaycheckpointinterval", replayCheckpointInterval);
+                }
+            } else {
+                runtimeArguments.push("-loadstate", "GeneralsXParity.sav");
+            }
+            if (/^[1-9]\d*$/.test(pauseFrame || "")) {
+                runtimeArguments.push("-pauseframe", pauseFrame);
+            }
+            if (/^[1-9]\d*$/.test(captureFrameDelay || "")) {
+                runtimeArguments.push("-captureframedelay", captureFrameDelay);
+            }
+            if (/^[1-9]\d*$/.test(captureFrameCount || "")) {
+                runtimeArguments.push("-captureframecount", captureFrameCount);
+            }
+            if (/^[1-9]\d*$/.test(saveStateFrame || "")) {
+                runtimeArguments.push("-savestateframe", saveStateFrame);
+            }
+            if (isPositiveReal(maxCameraHeight)) {
+                runtimeArguments.push("-maxcameraheight", maxCameraHeight);
+            }
+            if (isPositiveReal(minCameraHeight)) {
+                runtimeArguments.push("-mincameraheight", minCameraHeight);
+            }
+            if (shadowVolumes === "off") {
+                runtimeArguments.push("-noshadowvolumes");
+            }
+        }
+        if (isBotStress) {
+            runtimeArguments.push(
+                "-win", "-xres", "1024", "-yres", "768",
+                "-botmatch", botStressMap, botStressFaction, botStressSeed, botStressFrames, botStressSpeed
+            );
+        }
+        const supportedLocale = navigator.language.toLowerCase().startsWith("pt") ? "pt-BR" : "en";
+        let locale = supportedLocale;
+        let statusKey = "downloading";
+        let totalDependencies = 0;
+
+        const text = (key) => copy[locale][key];
+
+        function renderCopy() {
+            document.documentElement.lang = locale;
+            document.title = text("title");
+            document.querySelectorAll("[data-copy]").forEach((element) => {
+                element.textContent = text(element.dataset.copy);
+            });
+            statusElement.textContent = text(statusKey);
+            languageElement.value = locale;
+
+            const hasWasm = typeof WebAssembly === "object";
+            const hasWebGPU = "gpu" in navigator;
+            wasmCapability.dataset.state = hasWasm ? "ready" : "error";
+            webgpuCapability.dataset.state = hasWebGPU ? "ready" : "error";
+            wasmCapability.textContent = text(hasWasm ? "wasmReady" : "wasmMissing");
+            webgpuCapability.textContent = text(hasWebGPU ? "webgpuReady" : "webgpuMissing");
+            developerConsole.setAttribute("aria-label", text("consoleLabel"));
+            developerConsoleInput.setAttribute("aria-label", text("consoleLabel"));
+        }
+
+        function setStatus(rawStatus) {
+            const raw = rawStatus || "";
+            const progress = raw.match(/\((\d+(?:\.\d+)?)\/(\d+)\)/);
+            if (progress) {
+                progressElement.value = Number(progress[1]);
+                progressElement.max = Number(progress[2]);
+                progressElement.hidden = false;
+            } else {
+                progressElement.hidden = true;
+            }
+
+            if (!raw) {
+                statusKey = "running";
+                canvasShell.dataset.ready = "true";
+            } else if (/exception|error|abort|fail/i.test(raw)) {
+                statusKey = "failed";
+            } else if (/download/i.test(raw)) {
+                statusKey = "downloading";
+            } else {
+                statusKey = "preparing";
+            }
+            statusElement.textContent = text(statusKey);
+        }
+
+        const runtimeOutputLines = [];
+        const runtimeOutputLineLimit = 512;
+        const runtimeOutputCharacterLimit = 4096;
+        const runtimeConsoleLineLimit = 128;
+        let lastRuntimeOutputLine = "";
+        let lastRuntimeOutputRepeatCount = 0;
+        let runtimeOutputRenderPending = false;
+        const runtimeLogStats = {
+            receivedLines: 0,
+            retainedLines: 0,
+            droppedLines: 0,
+            collapsedLines: 0,
+            truncatedLines: 0,
+            consoleLines: 0
+        };
+        window.generalsXRuntimeLogStats = runtimeLogStats;
+
+        // GeneralsX @feature Codex 05/08/2026 8 GiB guard; swap is allowed to work before we bail out.
+        const browserMemoryLimitBytes = 8 * 1024 * 1024 * 1024;
+        const browserMemoryStats = {
+            available: false,
+            bytes: 0,
+            limitBytes: browserMemoryLimitBytes,
+            tripped: false
+        };
+        let browserMemoryMeasurementPending = false;
+        window.generalsXBrowserMemoryStats = browserMemoryStats;
+
+        // GeneralsX @feature Codex 05/08/2026 Ship the runtime log to the server so crashes leave evidence.
+        let shippedLogLineCount = 0;
+        function shipRuntimeLog() {
+            if (shippedLogLineCount >= runtimeOutputLines.length) {
+                return;
+            }
+            const chunk = runtimeOutputLines.slice(shippedLogLineCount).join("\n") + "\n";
+            shippedLogLineCount = runtimeOutputLines.length;
+            navigator.sendBeacon?.("/GeneralsXLog", chunk);
+        }
+        setInterval(shipRuntimeLog, 5000);
+        window.addEventListener("pagehide", shipRuntimeLog);
+
+        async function enforceBrowserMemoryLimit() {
+            if (browserMemoryMeasurementPending || browserMemoryStats.tripped) {
+                return;
+            }
+            browserMemoryMeasurementPending = true;
+            try {
+                let bytes = window.performance?.memory?.usedJSHeapSize || 0;
+                if (typeof window.performance?.measureUserAgentSpecificMemory === "function") {
+                    bytes = (await window.performance.measureUserAgentSpecificMemory()).bytes;
+                }
+                browserMemoryStats.available = bytes > 0;
+                browserMemoryStats.bytes = bytes;
+                if (bytes >= browserMemoryLimitBytes) {
+                    browserMemoryStats.tripped = true;
+                    setStatus("Browser memory limit exceeded");
+                    retainRuntimeOutput(`[MEMORY_GUARD] tripped at ${bytes} bytes (limit ${browserMemoryLimitBytes})`, "error");
+                    try {
+                        localStorage.setItem("generalsX.lastCrashLog",
+                            runtimeOutputLines.slice(-400).join("\n"));
+                        localStorage.setItem("generalsX.lastCrashAt", new Date().toISOString());
+                    } catch (storageError) { /* quota — server copy still ships */ }
+                    shipRuntimeLog();
+                    window.location.replace("/GeneralsXCrash");
+                }
+            } catch (error) {
+                browserMemoryStats.available = false;
+            } finally {
+                browserMemoryMeasurementPending = false;
+            }
+        }
+
+        function scheduleRuntimeOutputRender() {
+            if (runtimeOutputRenderPending) {
+                return;
+            }
+            runtimeOutputRenderPending = true;
+            requestAnimationFrame(() => {
+                runtimeOutputRenderPending = false;
+                outputElement.value = runtimeOutputLines.length
+                    ? `${runtimeOutputLines.join("\n")}\n`
+                    : "";
+                outputElement.scrollTop = outputElement.scrollHeight;
+            });
+        }
+
+        function retainRuntimeOutput(rawLine, method) {
+            const line = rawLine.length > runtimeOutputCharacterLimit
+                ? `${rawLine.slice(0, runtimeOutputCharacterLimit)} [truncated]`
+                : rawLine;
+            runtimeLogStats.receivedLines += 1;
+            if (line.length !== rawLine.length) {
+                runtimeLogStats.truncatedLines += 1;
+            }
+
+            if (line === lastRuntimeOutputLine && runtimeOutputLines.length) {
+                lastRuntimeOutputRepeatCount += 1;
+                runtimeLogStats.collapsedLines += 1;
+                runtimeOutputLines[runtimeOutputLines.length - 1] =
+                    `${line} [repeated ${lastRuntimeOutputRepeatCount} times]`;
+            } else {
+                lastRuntimeOutputLine = line;
+                lastRuntimeOutputRepeatCount = 1;
+                runtimeOutputLines.push(line);
+                if (runtimeOutputLines.length > runtimeOutputLineLimit) {
+                    runtimeOutputLines.shift();
+                    runtimeLogStats.droppedLines += 1;
+                }
+                if (runtimeLogStats.consoleLines < runtimeConsoleLineLimit) {
+                    // GeneralsX @bugfix Codex 05/08/2026 Engine logs all go to stderr; debug level keeps DevTools clean.
+                    console.debug(line);
+                    runtimeLogStats.consoleLines += 1;
+                }
+            }
+            runtimeLogStats.retainedLines = runtimeOutputLines.length;
+            scheduleRuntimeOutputRender();
+        }
+
+        function appendOutput(values, method) {
+            const line = values.map((value) => String(value)).join(" ");
+            const resultPrefix = "GENERALSX_BOT_MATCH_RESULT ";
+            const resultOffset = line.indexOf(resultPrefix);
+            if (resultOffset >= 0) {
+                try {
+                    window.generalsXBotMatchResult = JSON.parse(line.slice(resultOffset + resultPrefix.length));
+                    canvas.dataset.botMatchResult = "ready";
+                    requestAnimationFrame(() => {
+                        window.generalsXBotMatchCapture = {
+                            frame: window.generalsXBotMatchResult.logicFrame,
+                            width: canvas.width,
+                            height: canvas.height,
+                            dataUrl: canvas.toDataURL("image/png")
+                        };
+                    });
+                } catch (error) {
+                    console.error("Invalid bot-match result", error);
+                }
+            }
+            const replayPrefix = "GENERALSX_REPLAY_CHECKPOINT ";
+            const replayOffset = line.indexOf(replayPrefix);
+            if (replayOffset >= 0) {
+                try {
+                    window.generalsXReplayCheckpoint = JSON.parse(line.slice(replayOffset + replayPrefix.length));
+                    canvas.dataset.replayCheckpoint = "ready";
+                } catch (error) {
+                    console.error("Invalid replay checkpoint", error);
+                }
+            }
+            const replayResultPrefix = "GENERALSX_REPLAY_RESULT ";
+            const replayResultOffset = line.indexOf(replayResultPrefix);
+            if (replayResultOffset >= 0) {
+                try {
+                    window.generalsXReplayResult = JSON.parse(line.slice(replayResultOffset + replayResultPrefix.length));
+                    canvas.dataset.replayResult = "ready";
+                } catch (error) {
+                    console.error("Invalid replay result", error);
+                }
+            }
+            const lanResultPrefix = "GENERALSX_LAN_MATCH_RESULT ";
+            const lanResultOffset = line.indexOf(lanResultPrefix);
+            if (lanResultOffset >= 0) {
+                try {
+                    window.generalsXLanMatchResult = JSON.parse(line.slice(lanResultOffset + lanResultPrefix.length));
+                    canvas.dataset.lanMatchResult = "ready";
+                } catch (error) {
+                    console.error("Invalid LAN match result", error);
+                }
+            }
+            retainRuntimeOutput(line, method);
+        }
+
+        languageElement.addEventListener("change", () => {
+            locale = languageElement.value;
+            renderCopy();
+        });
+
+        // GeneralsX @feature Codex 05/08/2026 Fullscreen captures the mouse for edge scrolling.
+        function enterFullscreen() {
+            if (Module.requestFullscreen) {
+                Module.requestFullscreen(!isAutomatedTest, false);
+            } else {
+                canvas.requestFullscreen().then(() => {
+                    if (!isAutomatedTest) {
+                        canvas.requestPointerLock?.();
+                    }
+                }).catch(() => {});
+            }
+        }
+
+        document.getElementById("fullscreen").addEventListener("click", enterFullscreen);
+        document.getElementById("fullscreen-overlay").addEventListener("click", enterFullscreen);
+        document.getElementById("sound").addEventListener("click", () => setSoundMuted(!soundMuted));
+        document.getElementById("sound-overlay").addEventListener("click", () => setSoundMuted(!soundMuted));
+        if (soundMuted) {
+            setSoundMuted(true);
+        }
+
+        document.addEventListener("fullscreenchange", () => {
+            if (!document.fullscreenElement && document.pointerLockElement) {
+                document.exitPointerLock?.();
+            }
+        });
+
+        canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+        canvas.addEventListener("pointerdown", () => {
+            canvas.focus();
+            if (!document.pointerLockElement && !isAutomatedTest && canvasShell.dataset.ready === "true") {
+                canvas.requestPointerLock?.();
+            }
+        });
+
+        const consoleCommands = [
+            "args",
+            "capture",
+            "clear",
+            "close",
+            "cursor",
+            "frame",
+            "fullscreen",
+            "help",
+            "lan",
+            "language",
+            "mute",
+            "reload",
+            "replay",
+            "stress",
+            "status"
+        ];
+        const consoleHistory = [];
+        let consoleHistoryIndex = 0;
+
+        function writeConsole(value) {
+            developerConsoleOutput.textContent += `${value}\n`;
+            developerConsoleOutput.scrollTop = developerConsoleOutput.scrollHeight;
+        }
+
+        function setConsoleOpen(open) {
+            developerConsole.hidden = !open;
+            if (open) {
+                if (!developerConsoleOutput.textContent) {
+                    writeConsole(text("consoleHint"));
+                }
+                if (document.pointerLockElement) {
+                    document.exitPointerLock?.();
+                }
+                developerConsoleInput.focus();
+            } else {
+                developerConsoleInput.blur();
+                canvas.blur();
+            }
+        }
+
+        function setParityQuery(query, frame) {
+            query.set("replay", "/GeneralsReplays/visual-reference.rep");
+            query.set("pauseFrame", String(frame));
+            query.set("captureFrameDelay", "3");
+            query.set("captureFrameCount", "1");
+            query.set("maxCameraHeight", "350");
+            query.set("minCameraHeight", "100");
+            query.set("terrainDrawDistanceScale", "1.05");
+            query.set("staticGameLOD", "High");
+            query.set("shadowVolumes", "off");
+        }
+
+        function executeConsoleCommand(rawCommand) {
+            const commandLine = rawCommand.trim();
+            if (!commandLine) {
+                return "";
+            }
+
+            const [command, ...args] = commandLine.split(/\s+/);
+            switch (command.toLowerCase()) {
+                case "help":
+                    return "args | capture [frame] | clear | close | cursor free | frame <number> | fullscreen | help | lan open|identity <1-254>|host|join|map <2-8>|ai <slot> easy|medium|hard|accept|start|surrender|status | language en|pt-BR | mute | reload | replay [path] [frame|0] [speed] | status | stress bots|result";
+                case "args":
+                    return JSON.stringify({
+                        argc: Module._GeneralsXCommandLineArgc?.() ?? 0,
+                        replay: Boolean(Module._GeneralsXHasReplayArgument?.()),
+                        queuedReplays: Module._GeneralsXQueuedReplayCount?.() ?? 0
+                    });
+                case "status":
+                    return `status=${statusKey} logic=${Module._GeneralsXLogicFrame?.() ?? 0} frame=${canvas.dataset.referenceFrame || "running"} audio=${isAutomatedTest ? "muted" : "enabled"} cursor=${document.pointerLockElement ? "captured" : "free"} result=${window.generalsXBotMatchResult ? "ready" : "pending"} args=${runtimeArguments.join(" ")}`;
+                case "mute":
+                    if (isAutomatedTest) {
+                        return "Audio is muted for this test run.";
+                    }
+                    setSoundMuted(!soundMuted);
+                    return soundMuted ? "Sound muted." : "Sound on.";
+                case "cursor":
+                    if (args[0] === "free") {
+                        document.exitPointerLock?.();
+                        canvas.blur();
+                        return "Cursor released.";
+                    }
+                    return "Usage: cursor free";
+                case "lan": {
+                    const action = args[0];
+                    if (action === "status") {
+                        return JSON.stringify({
+                            relay: window.generalsXLanStatus || null,
+                            state: Module._GeneralsXLanState?.() ?? 0,
+                            logicFrame: Module._GeneralsXLogicFrame?.() ?? 0,
+                            endFrame: Module._GeneralsXLanEndFrame?.() ?? 0
+                        });
+                    }
+                    if (action === "open") {
+                        if (!Module._GeneralsXOpenLanMenu?.()) {
+                            return "LAN menu is not ready.";
+                        }
+                        setConsoleOpen(false);
+                        return "Opening LAN lobby.";
+                    }
+                    if (action === "identity") {
+                        const client = Number(args[1]);
+                        return Number.isInteger(client) && client >= 1 && client <= 254
+                            && Module._GeneralsXLanSetIdentity?.(client)
+                            ? `LAN identity set to Browser${client}.`
+                            : "Usage: lan identity <1-254>";
+                    }
+                    if (action === "map") {
+                        const players = Number(args[1] || 2);
+                        return Number.isInteger(players) && players >= 2 && players <= 8
+                            && Module._GeneralsXLanSetMapMinPlayers?.(players)
+                            ? `Map set for ${players}+ players.`
+                            : "Usage: lan map <2-8>";
+                    }
+                    if (action === "ai") {
+                        const slot = Number(args[1]);
+                        const difficulty = { easy: 0, medium: 1, hard: 2 }[args[2] || "hard"];
+                        return Number.isInteger(slot) && difficulty !== undefined
+                            && Module._GeneralsXLanSetSlotAI?.(slot, difficulty)
+                            ? `Slot ${slot} set to ${args[2] || "hard"} AI.`
+                            : "Usage: lan ai <slot> easy|medium|hard";
+                    }
+                    const commands = {
+                        host: "_GeneralsXLanHost",
+                        join: "_GeneralsXLanJoinFirst",
+                        accept: "_GeneralsXLanAccept",
+                        start: "_GeneralsXLanStart",
+                        surrender: "_GeneralsXLanSurrender"
+                    };
+                    const exported = commands[action];
+                    if (exported) {
+                        return Module[exported]?.()
+                            ? `LAN ${action} requested.`
+                            : `LAN ${action} is not ready.`;
+                    }
+                    return "Usage: lan open|identity <1-254>|host|join|map <2-8>|ai <slot> easy|medium|hard|accept|start|surrender|status";
+                }
+                case "capture": {
+                    const frame = Number(args[0] || canvas.dataset.referenceFrame || 0);
+                    const capture = {
+                        frame,
+                        width: canvas.width,
+                        height: canvas.height,
+                        dataUrl: canvas.toDataURL("image/png")
+                    };
+                    window.generalsXReferenceCapture = capture;
+                    window.generalsXReferenceCaptures ??= [];
+                    window.generalsXReferenceCaptures.push(capture);
+                    return `Captured frame ${frame} at ${capture.width}x${capture.height}.`;
+                }
+                case "frame": {
+                    const frame = Number(args[0]);
+                    if (!Number.isInteger(frame) || frame < 1) {
+                        return "Usage: frame <positive integer>";
+                    }
+                    const query = new URLSearchParams(window.location.search);
+                    setParityQuery(query, frame);
+                    window.location.search = query.toString();
+                    return `Loading parity frame ${frame}.`;
+                }
+                case "replay": {
+                    const path = args[0] || "/GeneralsReplays/visual-reference.rep";
+                    const frame = Number(args[1] || 0);
+                    const speed = Number(args[2] || 1);
+                    if (!/^\/GeneralsReplays\/[A-Za-z0-9_.-]+\.rep$/.test(path)) {
+                        return "Replay path must be a local /GeneralsReplays/*.rep file.";
+                    }
+                    if (!Number.isInteger(speed) || speed < 1 || speed > 10) {
+                        return "Replay speed must be an integer from 1 to 10.";
+                    }
+                    const query = new URLSearchParams(window.location.search);
+                    if (Number.isInteger(frame) && frame > 0) {
+                        setParityQuery(query, frame);
+                    } else {
+                        query.set("replay", path);
+                        query.delete("pauseFrame");
+                        query.delete("captureFrameDelay");
+                        query.delete("captureFrameCount");
+                    }
+                    query.set("replaySpeed", String(speed));
+                    window.location.search = query.toString();
+                    return `Loading ${path} at ${speed}x.`;
+                }
+                case "stress": {
+                    if (args[0] === "result") {
+                        return window.generalsXBotMatchResult
+                            ? JSON.stringify(window.generalsXBotMatchResult)
+                            : "Bot stress result is not ready.";
+                    }
+                    if (args[0] !== "bots") {
+                        return "Usage: stress bots|result";
+                    }
+                    const query = new URLSearchParams();
+                    query.set("stress", "bots");
+                    query.set("stressMap", "03maps/alpine assault");
+                    query.set("stressFaction", "FactionAmerica");
+                    query.set("stressSeed", "20260804");
+                    query.set("stressFrames", "27000");
+                    query.set("stressSpeed", "10");
+                    window.location.search = query.toString();
+                    return "Starting deterministic Brutal bot stress match.";
+                }
+                case "fullscreen":
+                    enterFullscreen();
+                    return "Fullscreen requested.";
+                case "language":
+                    if (!copy[args[0]]) {
+                        return "Usage: language en|pt-BR";
+                    }
+                    locale = args[0];
+                    renderCopy();
+                    return `Language set to ${locale}.`;
+                case "reload":
+                    window.location.reload();
+                    return "Reloading.";
+                case "clear":
+                    developerConsoleOutput.textContent = "";
+                    return "";
+                case "close":
+                    setConsoleOpen(false);
+                    return "";
+                default:
+                    return `Unknown command: ${command}. Type help.`;
+            }
+        }
+
+        function runConsoleCommand(command) {
+            const normalized = command.trim();
+            if (!normalized) {
+                return "";
+            }
+            consoleHistory.push(normalized);
+            consoleHistoryIndex = consoleHistory.length;
+            writeConsole(`> ${normalized}`);
+            const result = executeConsoleCommand(normalized);
+            if (result) {
+                writeConsole(result);
+            }
+            return result;
+        }
+
+        function completeConsoleInput() {
+            const parts = developerConsoleInput.value.trimStart().split(/\s+/);
+            const values = parts.length === 1
+                ? consoleCommands
+                : parts[0] === "cursor"
+                    ? ["free"]
+                    : parts[0] === "language"
+                        ? ["en", "pt-BR"]
+                        : parts[0] === "replay"
+                            ? ["/GeneralsReplays/visual-reference.rep"]
+                            : [];
+            const prefix = parts.at(-1).toLowerCase();
+            const matches = values.filter((value) => value.toLowerCase().startsWith(prefix));
+            if (matches.length === 1) {
+                parts[parts.length - 1] = matches[0];
+                developerConsoleInput.value = parts.join(" ");
+            } else if (matches.length > 1) {
+                writeConsole(matches.join("  "));
+            }
+        }
+
+        developerConsoleForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            runConsoleCommand(developerConsoleInput.value);
+            developerConsoleInput.value = "";
+        });
+
+        developerConsoleInput.addEventListener("keydown", (event) => {
+            if (event.key === "Tab") {
+                event.preventDefault();
+                completeConsoleInput();
+            } else if (event.key === "ArrowUp") {
+                event.preventDefault();
+                consoleHistoryIndex = Math.max(0, consoleHistoryIndex - 1);
+                developerConsoleInput.value = consoleHistory[consoleHistoryIndex] || "";
+            } else if (event.key === "ArrowDown") {
+                event.preventDefault();
+                consoleHistoryIndex = Math.min(consoleHistory.length, consoleHistoryIndex + 1);
+                developerConsoleInput.value = consoleHistory[consoleHistoryIndex] || "";
+            }
+        });
+
+        window.addEventListener("keydown", (event) => {
+            if (event.code === "Backquote" && !event.repeat) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                setConsoleOpen(developerConsole.hidden);
+                return;
+            }
+            if (!developerConsole.hidden) {
+                if (event.key === "Escape") {
+                    event.preventDefault();
+                    setConsoleOpen(false);
+                }
+                event.stopImmediatePropagation();
+            }
+        });
+
+        window.generalsXConsole = {
+            commands: [...consoleCommands],
+            execute: runConsoleCommand,
+            open: () => setConsoleOpen(true),
+            close: () => setConsoleOpen(false)
+        };
+
+        window.generalsXCaptureReferenceFrame = (frame) => {
+            window.generalsXReferenceCaptures ??= [];
+            if (window.generalsXReferenceCaptures.some((capture) => capture.frame === frame)) {
+                return;
+            }
+            requestAnimationFrame(() => {
+                const capture = {
+                    frame,
+                    width: canvas.width,
+                    height: canvas.height,
+                    dataUrl: canvas.toDataURL("image/png")
+                };
+                window.generalsXReferenceCaptures.push(capture);
+                window.generalsXReferenceCapture = capture;
+                canvas.dataset.referenceFrame = String(frame);
+            });
+        };
+
+        const modulePreRun = [];
+        const modulePostRun = [];
+        if (hasReferenceSettings || isBotStress || isReplayStress) {
+            modulePreRun.push(() => {
+                const userDataPath = "/home/web_user/.local/share/GeneralsX/GeneralsZH";
+                const options = isBotStress || isReplayStress
+                    ? `AnisotropyLevel = 16\nAntiAliasing = 4\nDynamicLOD = No\nExtraAnimations = Yes\nGameTimeFontSize = 0\nHeatEffects = Yes\nIdealStaticGameLOD = VeryHigh\nMaxParticleCount = 5000\nNetworkLatencyFontSize = 0\nRenderFpsFontSize = 0\nShowSoftWaterEdge = Yes\nShowTrees = Yes\nStaticGameLOD = VeryHigh\nSystemTimeFontSize = 0\nTextureFilter = Anisotropic\nTextureReduction = 0\nUseCloudMap = Yes\nUseLightMap = Yes\nUseShadowDecals = Yes\nUseShadowVolumes = Yes\nCursorCaptureEnabledInWindowedGame = No\nCursorCaptureEnabledInWindowedMenu = No\nCursorCaptureEnabledInFullscreenGame = No\nCursorCaptureEnabledInFullscreenMenu = No\n`
+                    : `IdealStaticGameLOD = ${staticGameLOD}\nStaticGameLOD = ${staticGameLOD}\nCursorCaptureEnabledInWindowedGame = No\nCursorCaptureEnabledInWindowedMenu = No\nCursorCaptureEnabledInFullscreenGame = No\nCursorCaptureEnabledInFullscreenMenu = No\n`;
+                const sagePatch = isBotStress || isReplayStress
+                    ? `GameData\n  MaxCameraHeight = 350\n  MinCameraHeight = 100\n  EnforceMaxCameraHeight = No\n  KeyboardScrollSpeedFactor = 1.0\n  TerrainDrawDistanceScale = 1.05\n  UseFPSLimit = Yes\n  FramesPerSecondLimit = 300\nEnd\n`
+                    : `GameData\n  MaxCameraHeight = ${maxCameraHeight}\n  MinCameraHeight = ${minCameraHeight}\n  EnforceMaxCameraHeight = No\n  KeyboardScrollSpeedFactor = 1.0\n  TerrainDrawDistanceScale = ${terrainDrawDistanceScale}\n  UseFPSLimit = Yes\n  FramesPerSecondLimit = 60\nEnd\n`;
+                FS.mkdirTree(userDataPath);
+                FS.writeFile(`${userDataPath}/Options.ini`, options);
+                FS.writeFile(`${userDataPath}/Options_Instance02.ini`, options);
+                FS.writeFile(`${userDataPath}/SagePatch.ini`, sagePatch);
+            });
+        }
+        if (isReferenceState) {
+            modulePreRun.push(() => {
+                const dependency = "generalsx-parity-save-state";
+                addRunDependency(dependency);
+                fetch(saveStateUrl)
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error(`Save-state request failed: ${response.status}`);
+                        }
+                        return response.arrayBuffer();
+                    })
+                    .then((bytes) => {
+                        const saveDirectory = "/home/web_user/.local/share/GeneralsX/GeneralsZH/Save";
+                        FS.mkdirTree(saveDirectory);
+                        FS.writeFile(`${saveDirectory}/GeneralsXParity.sav`, new Uint8Array(bytes));
+                    })
+                    .catch((error) => appendOutput([error.message], "error"))
+                    .finally(() => removeRunDependency(dependency));
+            });
+        }
+        if (isAutomatedLan) {
+            modulePostRun.push(() => {
+                let attempts = 0;
+                const timer = window.setInterval(() => {
+                    attempts += 1;
+                    if (Module._GeneralsXOpenLanMenu?.()) {
+                        window.clearInterval(timer);
+                        appendOutput(["LAN lobby opened."], "log");
+                    } else if (attempts >= 120) {
+                        window.clearInterval(timer);
+                        appendOutput(["LAN lobby failed to open."], "error");
+                    }
+                }, 250);
+            });
+        }
+
+        var Module = {
+            arguments: runtimeArguments,
+            canvas,
+            preRun: modulePreRun,
+            postRun: modulePostRun,
+            print(...values) {
+                appendOutput(values, "log");
+            },
+            printErr(...values) {
+                appendOutput(values, "error");
+            },
+            setStatus,
+            monitorRunDependencies(remaining) {
+                totalDependencies = Math.max(totalDependencies, remaining);
+                setStatus(remaining ? `Preparing… (${totalDependencies - remaining}/${totalDependencies})` : "");
+            }
+        };
+
+        window.addEventListener("error", (event) => {
+            appendOutput([`Runtime error: ${event.message || "unknown error"}`], "error");
+            setStatus("Runtime error");
+        });
+        window.addEventListener("unhandledrejection", (event) => {
+            const reason = event.reason?.message || String(event.reason || "");
+            const isActivationRejection = event.reason?.name === "NotAllowedError" || reason === "not granted";
+            if (event.reason && !isActivationRejection) {
+                appendOutput([`Unhandled rejection: ${reason}`], "error");
+                setStatus("Runtime error");
+            }
+        });
+
+        renderCopy();
+        setStatus("Downloading…");
+        window.setInterval(enforceBrowserMemoryLimit, 2000);
+    </script>
+    {{{ SCRIPT }}}
+</body>
+</html>

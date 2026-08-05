@@ -36,12 +36,17 @@
 #include "GameClient/GUICallbacks.h"
 #include "GameClient/Gadget.h"
 
+#if defined(SAGE_USE_GAMESPY)
 // Popup Ladder Select --------------------------------------------------------------------------
 extern void PopupLadderSelectInit( WindowLayout *layout, void *userData );
 extern WindowMsgHandledType PopupLadderSelectSystem( GameWindow *window, UnsignedInt msg, WindowMsgData mData1, WindowMsgData mData2 );
 extern WindowMsgHandledType PopupLadderSelectInput( GameWindow *window, UnsignedInt msg, WindowMsgData mData1, WindowMsgData mData2 );
+#endif
 
+#if defined(SAGE_USE_GAMESPY)
+// GeneralsX @build Codex 04/08/2026 Register online callbacks only when their service implementation exists.
 extern WindowMsgHandledType PopupBuddyNotificationSystem( GameWindow *window, UnsignedInt msg, WindowMsgData mData1, WindowMsgData mData2 );
+#endif
 
 // WOL Buddy Overlay Right Click menu callbacks --------------------------------------------------------------
 extern void RCGameDetailsMenuInit( WindowLayout *layout, void *userData );
@@ -109,9 +114,12 @@ static FunctionLexicon::TableEntry gameWinSystemTable[] =
 	{ NAMEKEY_INVALID, "ChallengeMenuSystem",                (void*)ChallengeMenuSystem },
 	{ NAMEKEY_INVALID, "SaveLoadMenuSystem",                 (void*)SaveLoadMenuSystem },
 	{ NAMEKEY_INVALID, "PopupCommunicatorSystem",            (void*)PopupCommunicatorSystem },
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "PopupBuddyNotificationSystem",       (void*)PopupBuddyNotificationSystem },
+#endif
 	{ NAMEKEY_INVALID, "PopupReplaySystem",                  (void*)PopupReplaySystem },
 	{ NAMEKEY_INVALID, "KeyboardOptionsMenuSystem",          (void*)KeyboardOptionsMenuSystem },
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "WOLLadderScreenSystem",              (void*)WOLLadderScreenSystem },
 	{ NAMEKEY_INVALID, "WOLLoginMenuSystem",                 (void*)WOLLoginMenuSystem },
 	{ NAMEKEY_INVALID, "WOLLocaleSelectSystem",              (void*)WOLLocaleSelectSystem },
@@ -129,9 +137,12 @@ static FunctionLexicon::TableEntry gameWinSystemTable[] =
 	{ NAMEKEY_INVALID, "WOLQMScoreScreenSystem",             (void*)WOLQMScoreScreenSystem },
 	{ NAMEKEY_INVALID, "WOLCustomScoreScreenSystem",         (void*)WOLCustomScoreScreenSystem },
 	{ NAMEKEY_INVALID, "NetworkDirectConnectSystem",         (void*)NetworkDirectConnectSystem },
+#endif
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "PopupHostGameSystem",                (void*)PopupHostGameSystem },
 	{ NAMEKEY_INVALID, "PopupJoinGameSystem",                (void*)PopupJoinGameSystem },
 	{ NAMEKEY_INVALID, "PopupLadderSelectSystem",            (void*)PopupLadderSelectSystem },
+#endif
 	{ NAMEKEY_INVALID, "InGamePopupMessageSystem",           (void*)InGamePopupMessageSystem },
 	{ NAMEKEY_INVALID, "ControlBarSystem",                   (void*)ControlBarSystem },
 	{ NAMEKEY_INVALID, "ControlBarObserverSystem",           (void*)ControlBarObserverSystem },
@@ -186,6 +197,7 @@ static FunctionLexicon::TableEntry gameWinInputTable[] =
 	{ NAMEKEY_INVALID, "SkirmishGameOptionsMenuInput",      (void*)SkirmishGameOptionsMenuInput },
 	{ NAMEKEY_INVALID, "SkirmishMapSelectMenuInput",        (void*)SkirmishMapSelectMenuInput },
 	{ NAMEKEY_INVALID, "ChallengeMenuInput",                (void*)ChallengeMenuInput },
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "WOLLadderScreenInput",              (void*)WOLLadderScreenInput },
 	{ NAMEKEY_INVALID, "WOLLoginMenuInput",                 (void*)WOLLoginMenuInput },
 	{ NAMEKEY_INVALID, "WOLLocaleSelectInput",              (void*)WOLLocaleSelectInput },
@@ -201,9 +213,12 @@ static FunctionLexicon::TableEntry gameWinInputTable[] =
 	{ NAMEKEY_INVALID, "WOLQMScoreScreenInput",             (void*)WOLQMScoreScreenInput },
 	{ NAMEKEY_INVALID, "WOLCustomScoreScreenInput",         (void*)WOLCustomScoreScreenInput },
 	{ NAMEKEY_INVALID, "NetworkDirectConnectInput",         (void*)NetworkDirectConnectInput },
+#endif
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "PopupHostGameInput",                (void*)PopupHostGameInput },
 	{ NAMEKEY_INVALID, "PopupJoinGameInput",                (void*)PopupJoinGameInput },
 	{ NAMEKEY_INVALID, "PopupLadderSelectInput",            (void*)PopupLadderSelectInput },
+#endif
 	{ NAMEKEY_INVALID, "InGamePopupMessageInput",           (void*)InGamePopupMessageInput },
 	{ NAMEKEY_INVALID, "ControlBarInput",                   (void*)ControlBarInput },
 	{ NAMEKEY_INVALID, "ReplayControlInput",                (void*)ReplayControlInput },
@@ -259,6 +274,7 @@ static FunctionLexicon::TableEntry winLayoutInitTable[] =
 	{ NAMEKEY_INVALID, "SkirmishGameOptionsMenuInit",   (void*)SkirmishGameOptionsMenuInit },
 	{ NAMEKEY_INVALID, "SkirmishMapSelectMenuInit",     (void*)SkirmishMapSelectMenuInit },
 	{ NAMEKEY_INVALID, "ChallengeMenuInit",             (void*)ChallengeMenuInit },
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "WOLLadderScreenInit",           (void*)WOLLadderScreenInit },
 	{ NAMEKEY_INVALID, "WOLLoginMenuInit",              (void*)WOLLoginMenuInit },
 	{ NAMEKEY_INVALID, "WOLLocaleSelectInit",           (void*)WOLLocaleSelectInit },
@@ -276,9 +292,12 @@ static FunctionLexicon::TableEntry winLayoutInitTable[] =
 	{ NAMEKEY_INVALID, "WOLQMScoreScreenInit",          (void*)WOLQMScoreScreenInit },
 	{ NAMEKEY_INVALID, "WOLCustomScoreScreenInit",      (void*)WOLCustomScoreScreenInit },
 	{ NAMEKEY_INVALID, "NetworkDirectConnectInit",      (void*)NetworkDirectConnectInit },
+#endif
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "PopupHostGameInit",             (void*)PopupHostGameInit },
 	{ NAMEKEY_INVALID, "PopupJoinGameInit",             (void*)PopupJoinGameInit },
 	{ NAMEKEY_INVALID, "PopupLadderSelectInit",         (void*)PopupLadderSelectInit },
+#endif
 	{ NAMEKEY_INVALID, "InGamePopupMessageInit",        (void*)InGamePopupMessageInit },
 	{ NAMEKEY_INVALID, "GameInfoWindowInit",            (void*)GameInfoWindowInit },
 	{ NAMEKEY_INVALID, "ScoreScreenInit",               (void*)ScoreScreenInit },
@@ -309,12 +328,17 @@ static FunctionLexicon::TableEntry winLayoutUpdateTable[] =
 	{ NAMEKEY_INVALID, "SkirmishGameOptionsMenuUpdate",   (void*)SkirmishGameOptionsMenuUpdate },
 	{ NAMEKEY_INVALID, "SkirmishMapSelectMenuUpdate",     (void*)SkirmishMapSelectMenuUpdate },
 	{ NAMEKEY_INVALID, "ChallengeMenuUpdate",             (void*)ChallengeMenuUpdate },
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "WOLLadderScreenUpdate",           (void*)WOLLadderScreenUpdate },
 	{ NAMEKEY_INVALID, "WOLLoginMenuUpdate",              (void*)WOLLoginMenuUpdate },
 	{ NAMEKEY_INVALID, "WOLLocaleSelectUpdate",           (void*)WOLLocaleSelectUpdate },
 	{ NAMEKEY_INVALID, "WOLLobbyMenuUpdate",              (void*)WOLLobbyMenuUpdate },
 	{ NAMEKEY_INVALID, "WOLGameSetupMenuUpdate",          (void*)WOLGameSetupMenuUpdate },
+#endif
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "PopupHostGameUpdate",             (void*)PopupHostGameUpdate },
+#endif
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "WOLMapSelectMenuUpdate",          (void*)WOLMapSelectMenuUpdate },
 	{ NAMEKEY_INVALID, "WOLBuddyOverlayUpdate",           (void*)WOLBuddyOverlayUpdate },
 	{ NAMEKEY_INVALID, "GameSpyPlayerInfoOverlayUpdate",  (void*)GameSpyPlayerInfoOverlayUpdate },
@@ -325,6 +349,7 @@ static FunctionLexicon::TableEntry winLayoutUpdateTable[] =
 	{ NAMEKEY_INVALID, "WOLQMScoreScreenUpdate",          (void*)WOLQMScoreScreenUpdate },
 	{ NAMEKEY_INVALID, "WOLCustomScoreScreenUpdate",      (void*)WOLCustomScoreScreenUpdate },
 	{ NAMEKEY_INVALID, "NetworkDirectConnectUpdate",      (void*)NetworkDirectConnectUpdate },
+#endif
 	{ NAMEKEY_INVALID, "ScoreScreenUpdate",               (void*)ScoreScreenUpdate },
 	{ NAMEKEY_INVALID, "DownloadMenuUpdate",              (void*)DownloadMenuUpdate },
 	{ NAMEKEY_INVALID, "ExtrasMenuUpdate",                (void*)ExtrasMenuUpdate },
@@ -352,6 +377,7 @@ static FunctionLexicon::TableEntry winLayoutShutdownTable[] =
 	{ NAMEKEY_INVALID, "SkirmishGameOptionsMenuShutdown",   (void*)SkirmishGameOptionsMenuShutdown },
 	{ NAMEKEY_INVALID, "SkirmishMapSelectMenuShutdown",     (void*)SkirmishMapSelectMenuShutdown },
 	{ NAMEKEY_INVALID, "ChallengeMenuShutdown",             (void*)ChallengeMenuShutdown },
+#if defined(SAGE_USE_GAMESPY)
 	{ NAMEKEY_INVALID, "WOLLadderScreenShutdown",           (void*)WOLLadderScreenShutdown },
 	{ NAMEKEY_INVALID, "WOLLoginMenuShutdown",              (void*)WOLLoginMenuShutdown },
 	{ NAMEKEY_INVALID, "WOLLocaleSelectShutdown",           (void*)WOLLocaleSelectShutdown },
@@ -367,6 +393,7 @@ static FunctionLexicon::TableEntry winLayoutShutdownTable[] =
 	{ NAMEKEY_INVALID, "WOLQMScoreScreenShutdown",          (void*)WOLQMScoreScreenShutdown },
 	{ NAMEKEY_INVALID, "WOLCustomScoreScreenShutdown",      (void*)WOLCustomScoreScreenShutdown },
 	{ NAMEKEY_INVALID, "NetworkDirectConnectShutdown",      (void*)NetworkDirectConnectShutdown },
+#endif
 	{ NAMEKEY_INVALID, "ScoreScreenShutdown",               (void*)ScoreScreenShutdown },
 	{ NAMEKEY_INVALID, "DownloadMenuShutdown",              (void*)DownloadMenuShutdown },
 	{ NAMEKEY_INVALID, "ExtrasMenuShutdown",                (void*)ExtrasMenuShutdown },

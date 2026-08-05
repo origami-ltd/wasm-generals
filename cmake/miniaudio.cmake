@@ -35,7 +35,8 @@ if(SAGE_USE_MINIAUDIO)
 
         FetchContent_Declare(
             miniaudio
-            URL "https://github.com/mackron/miniaudio/archive/refs/heads/master.tar.gz"
+            URL "https://github.com/mackron/miniaudio/archive/9634bedb5b5a2ca38c1ee7108a9358a4e233f14d.tar.gz"
+            URL_HASH "SHA256=1a3a79b80fc6f0b0cc155e28b954a598e0ddfa2db64e2afa8466be88c476fa55"
         )
 
         FetchContent_GetProperties(miniaudio)

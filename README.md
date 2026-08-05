@@ -71,6 +71,7 @@ Because these projects serve different but complementary goals, not every change
 
 - [ Linux Build Guide](docs/BUILD/LINUX.md)
 - [ macOS Build Guide](docs/BUILD/MACOS.md)
+- [ Chrome WebAssembly + WebGPU Build Guide](docs/WORKDIR/support/WEBGPU_BROWSER_RUNTIME.md)
 
 ###  Known Issues & Limitations
 

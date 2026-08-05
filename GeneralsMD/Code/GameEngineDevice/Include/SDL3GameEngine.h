@@ -120,6 +120,9 @@ protected:
 	void handleMouseButtonEvent(const SDL_MouseButtonEvent& event);
 	void handleMouseWheelEvent(const SDL_MouseWheelEvent& event);  //TheSuperHackers @build 10/02/2026 Bender
 	void handleWindowEvent(const SDL_WindowEvent& event);
+#if defined(__EMSCRIPTEN__)
+	static void browserFrame(void* engine);
+#endif
 };
 
 #endif // !_WIN32

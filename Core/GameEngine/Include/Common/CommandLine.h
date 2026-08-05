@@ -28,6 +28,22 @@
 
 #pragma once
 
+extern unsigned int TheCommandLinePauseFrame;
+extern unsigned int TheCommandLineCaptureFrameDelay;
+extern unsigned int TheCommandLineCaptureFrameCount;
+extern unsigned int TheCommandLineSaveStateFrame;
+extern char TheCommandLineLoadStateFile[256];
+extern const char TheCommandLineSaveStateFile[];
+extern float TheCommandLineMaxCameraHeight;
+extern float TheCommandLineMinCameraHeight;
+extern char TheCommandLineBotMatchMap[256];
+extern char TheCommandLineBotMatchFaction[64];
+extern unsigned int TheCommandLineBotMatchSeed;
+extern unsigned int TheCommandLineBotMatchMaxFrames;
+extern unsigned int TheCommandLineBotMatchSpeed;
+extern unsigned int TheCommandLineReplaySpeed;
+extern unsigned int TheCommandLineReplayCheckpointInterval;
+
 class CommandLine
 {
 public:

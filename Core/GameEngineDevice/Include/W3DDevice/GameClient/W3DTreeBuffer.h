@@ -249,6 +249,7 @@ private:
 	Vector3 m_cameraLookAtVector;
 	Vector3 m_swayOffsets[NUM_SWAY_ENTRIES];
 	Int			m_curSwayVersion;
+	UnsignedInt m_swayStartFrame;
 
 	Real		m_curSwayOffset[MAX_SWAY_TYPES];
 	Real		m_curSwayStep[MAX_SWAY_TYPES];

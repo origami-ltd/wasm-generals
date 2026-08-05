@@ -81,6 +81,7 @@ public:
 protected:
 
 	virtual void resetSubsystems();
+	void executeFrame();
 
 	Bool canUpdateGameLogic(UnsignedInt logicTimeQueryFlags = 0);
 	Bool canUpdateNetworkGameLogic();
@@ -101,6 +102,13 @@ protected:
 	virtual AudioManager *createAudioManager(Bool dummy) = 0;				///< Factory for Audio Manager
 
 	Real m_logicTimeAccumulator; ///< Frame time accumulated towards submitting a new logic frame
+	Int64 m_botMatchStartCounter;
+	Int64 m_botMatchDrawCalls;
+	double m_botMatchFrameMilliseconds;
+	double m_botMatchMaxFrameMilliseconds;
+	UnsignedInt m_botMatchRenderFrames;
+	UnsignedInt m_botMatchMaxDrawCalls;
+	Bool m_botMatchResultEmitted;
 
 	Bool m_quitting; ///< true when we need to quit the game
 	Bool m_isActive; ///< app has OS focus.

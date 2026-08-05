@@ -98,6 +98,8 @@ public:
 	virtual void registerDrawable( Drawable *draw );										///< Given a drawable, register it with the GameClient and give it a unique ID
 
 	void step(); ///< Do one fixed time step
+	void setDrawingEnabled(Bool enabled) { m_drawingEnabled = enabled; }
+	Bool isDrawingEnabled() const { return m_drawingEnabled; }
 
 	void updateHeadless();
 
@@ -185,6 +187,7 @@ protected:
 private:
 
 	Intro* m_intro;
+	Bool m_drawingEnabled;
 	UnsignedInt m_renderedObjectCount;													///< Keeps track of the number of rendered objects -- resets each frame.
 
 	//---------------------------------------------------------------------------

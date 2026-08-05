@@ -120,6 +120,10 @@ class UDP
 	Int						AllowBroadcasts(Bool status);
 };
 
+#if defined(__EMSCRIPTEN__)
+UnsignedInt GetWebLanVirtualIP();
+#endif
+
 #ifdef DEBUG_LOGGING
 AsciiString GetWSAErrorString( Int error );
 #endif

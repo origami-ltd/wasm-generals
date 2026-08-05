@@ -154,10 +154,13 @@ Bool IsInGameChatActive() {
 }
 
 // Slash commands -------------------------------------------------------------------------
+#if defined(SAGE_USE_GAMESPY)
+// GeneralsX @build Codex 04/08/2026 Compile online diagnostics only with the online backend.
 extern "C" {
 int getQR2HostingStatus();
 }
 extern int isThreadHosting;
+#endif
 
 Bool handleInGameSlashCommands(UnicodeString uText)
 {
@@ -174,6 +177,7 @@ Bool handleInGameSlashCommands(UnicodeString uText)
 	remainder.nextToken(&token);
 	token.toLower();
 
+#if defined(SAGE_USE_GAMESPY)
 	if (token == "host")
 	{
 		UnicodeString s;
@@ -181,6 +185,7 @@ Bool handleInGameSlashCommands(UnicodeString uText)
 		TheInGameUI->message(s);
 		return TRUE; // was a slash command
 	}
+#endif
 
 	return FALSE; // not a slash command
 }
@@ -358,4 +363,3 @@ WindowMsgHandledType InGameChatSystem( GameWindow *window, UnsignedInt msg,
 	return MSG_HANDLED;
 
 }
-

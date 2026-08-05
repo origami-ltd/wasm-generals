@@ -28,6 +28,8 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
+#include <chrono>
+
 #include "Common/ActionManager.h"
 #include "Common/AudioAffect.h"
 #include "Common/BuildAssistant.h"
@@ -104,7 +106,10 @@
 #include "GameNetwork/NetworkInterface.h"
 #include "GameNetwork/WOLBrowser/WebBrowser.h"
 #include "GameNetwork/LANAPI.h"
+#if defined(SAGE_USE_GAMESPY)
+// GeneralsX @build Codex 04/08/2026 Build the results transport only with the matching online backend.
 #include "GameNetwork/GameSpy/GameResultsThread.h"
+#endif
 
 #include "Common/version.h"
 
@@ -256,6 +261,13 @@ GameEngine::GameEngine()
 {
 	// initialize to non garbage values
 	m_logicTimeAccumulator = 0.0f;
+	m_botMatchStartCounter = 0;
+	m_botMatchDrawCalls = 0;
+	m_botMatchFrameMilliseconds = 0.0;
+	m_botMatchMaxFrameMilliseconds = 0.0;
+	m_botMatchRenderFrames = 0;
+	m_botMatchMaxDrawCalls = 0;
+	m_botMatchResultEmitted = FALSE;
 	m_quitting = FALSE;
 	m_isActive = FALSE;
 
@@ -263,6 +275,86 @@ GameEngine::GameEngine()
 #ifdef _WIN32
 	_Module.Init(nullptr, ApplicationHInstance, nullptr);
 #endif
+}
+
+static void startCommandLineBotMatch()
+{
+	if (TheCommandLineBotMatchMap[0] == '\0')
+		return;
+
+	AsciiString mapName = TheCommandLineBotMatchMap;
+	AsciiString mapKey = mapName;
+	mapKey.toLower();
+	MapCache::const_iterator map = TheMapCache->find(mapKey);
+	if (map == TheMapCache->end() || !map->second.m_isMultiplayer || map->second.m_numPlayers < 2)
+	{
+		AsciiString error;
+		error.format("Invalid bot-match map: %s", mapName.str());
+		RELEASE_CRASH(error.str());
+		return;
+	}
+
+	const Int faction = ThePlayerTemplateStore->getTemplateNumByName(TheCommandLineBotMatchFaction);
+	if (faction < 0)
+	{
+		AsciiString error;
+		error.format("Invalid bot-match faction: %s", TheCommandLineBotMatchFaction);
+		RELEASE_CRASH(error.str());
+		return;
+	}
+
+	delete TheSkirmishGameInfo;
+	TheSkirmishGameInfo = NEW SkirmishGameInfo;
+	TheSkirmishGameInfo->init();
+	TheSkirmishGameInfo->clearSlotList();
+	TheSkirmishGameInfo->reset();
+	const UnsignedInt localIP = 0x7f000001;
+	TheSkirmishGameInfo->setLocalIP(localIP);
+	TheSkirmishGameInfo->enterGame();
+
+	UnicodeString observerName;
+	observerName.translate("GeneralsX Observer");
+	GameSlot observer;
+	observer.setState(SLOT_PLAYER, observerName, localIP);
+	observer.setPlayerTemplate(PLAYERTEMPLATE_OBSERVER);
+	TheSkirmishGameInfo->setSlot(0, observer);
+
+	for (Int slotIndex = 1; slotIndex <= 2; ++slotIndex)
+	{
+		GameSlot bot;
+		bot.setState(SLOT_BRUTAL_AI);
+		bot.setPlayerTemplate(faction);
+		bot.setColor(slotIndex - 1);
+		bot.setStartPos(slotIndex - 1);
+		bot.setTeamNumber(-1);
+		TheSkirmishGameInfo->setSlot(slotIndex, bot);
+	}
+
+	TheSkirmishGameInfo->setSeed(TheCommandLineBotMatchSeed);
+	TheSkirmishGameInfo->setMap(mapName);
+	TheSkirmishGameInfo->setMapCRC(map->second.m_CRC);
+	TheSkirmishGameInfo->setMapSize(map->second.m_filesize);
+	TheSkirmishGameInfo->startGame(0);
+
+	TheGameLODManager->setStaticLODLevel(STATIC_GAME_LOD_VERY_HIGH);
+	TheWritableGlobalData->m_enableDynamicLOD = FALSE;
+	TheWritableGlobalData->m_mapName = mapName;
+	InitRandom(TheCommandLineBotMatchSeed);
+	GameMessage *msg = TheMessageStream->appendMessage(GameMessage::MSG_NEW_GAME);
+	msg->appendIntegerArgument(GAME_SKIRMISH);
+	msg->appendIntegerArgument(DIFFICULTY_HARD);
+	msg->appendIntegerArgument(0);
+	msg->appendIntegerArgument(LOGICFRAMES_PER_SECOND * TheCommandLineBotMatchSpeed);
+	fprintf(stderr,
+		"GENERALSX_BOT_MATCH_CONFIG {\"map\":\"%s\",\"faction\":\"%s\",\"difficulty\":\"brutal\",\"seed\":%u,\"maxFrames\":%u,\"speed\":%u,\"lod\":\"VeryHigh\"}\n",
+		TheCommandLineBotMatchMap, TheCommandLineBotMatchFaction, TheCommandLineBotMatchSeed,
+		TheCommandLineBotMatchMaxFrames, TheCommandLineBotMatchSpeed);
+}
+
+static Int64 getBotMatchCounter()
+{
+	return std::chrono::duration_cast<std::chrono::microseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -277,7 +369,9 @@ GameEngine::~GameEngine()
 //	delete TheShell;
 //	TheShell = nullptr;
 
+#if defined(SAGE_USE_GAMESPY)
 	TheGameResultsQueue->endThreads();
+#endif
 
 	// TheSuperHackers @fix helmutbuhler 03/06/2025
 	// Reset all subsystems before deletion to prevent crashing due to cross dependencies.
@@ -738,7 +832,9 @@ void GameEngine::init()
 		initSubsystem(TheGameState,"TheGameState", MSGNEW("GameEngineSubsystem") GameState, nullptr );
 
 		// Create the interface for sending game results
+#if defined(SAGE_USE_GAMESPY)
 		initSubsystem(TheGameResultsQueue,"TheGameResultsQueue", GameResultsInterface::createNewGameResultsInterface(), nullptr);
+#endif
 
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -783,6 +879,7 @@ void GameEngine::init()
 		// initialize the MapCache
 		TheMapCache = MSGNEW("GameEngineSubsystem") MapCache;
 		TheMapCache->updateCache();
+		startCommandLineBotMatch();
 
 
 	#ifdef DUMP_PERF_STATS///////////////////////////////////////////////////////////////////////////
@@ -801,7 +898,8 @@ void GameEngine::init()
 		}
 
 		// load the initial shell screen
-		TheShell->push( "Menus/MainMenu.wnd" );
+		if (TheCommandLineLoadStateFile[0] == '\0' && TheCommandLineBotMatchMap[0] == '\0')
+			TheShell->push( "Menus/MainMenu.wnd" );
 
 		// This allows us to run a map from the command line
 		if (TheGlobalData->m_initialFile.isEmpty() == FALSE)
@@ -864,6 +962,33 @@ void GameEngine::init()
 	resetSubsystems();
 
 	HideControlBar();
+
+	if (TheCommandLineLoadStateFile[0] != '\0')
+	{
+		fprintf(stderr, "[GeneralsX] SAVE_STATE_LOAD_BEGIN file=%s\n", TheCommandLineLoadStateFile);
+		AvailableGameInfo gameInfo = {};
+		gameInfo.filename = TheCommandLineLoadStateFile;
+		TheGameState->getSaveGameInfoFromFile(
+			TheGameState->getFilePathInSaveDirectory(gameInfo.filename), &gameInfo.saveGameInfo);
+		TheGameLogic->prepareNewGame(GAME_SINGLE_PLAYER, DIFFICULTY_NORMAL, 0);
+		if (TheGameState->loadGame(gameInfo) != SC_OK)
+		{
+			fprintf(stderr, "[GeneralsX] SAVE_STATE_LOAD_FAILED file=%s\n", TheCommandLineLoadStateFile);
+			m_quitting = TRUE;
+		}
+		else
+		{
+			TheGameClient->setTimeOfDay(TheGlobalData->m_timeOfDay);
+			fprintf(stderr, "[GeneralsX] SAVE_STATE_LOADED file=%s frame=%u mode=%d\n",
+				TheCommandLineLoadStateFile, TheGameLogic->getFrame(), TheGameLogic->getGameMode());
+			if (TheCommandLinePauseFrame != 0)
+			{
+				TheCommandLinePauseFrame = TheGameLogic->getFrame() + 1;
+				TheGameLogic->setGamePaused(FALSE, FALSE, FALSE);
+				TheGameLogic->setGamePausedInFrame(TheCommandLinePauseFrame, TRUE);
+			}
+		}
+	}
 }
 
 /** -----------------------------------------------------------------------------------------------
@@ -874,6 +999,12 @@ void GameEngine::reset()
 
 	WindowLayout *background = TheWindowManager->winCreateLayout("Menus/BlankWindow.wnd");
 	DEBUG_ASSERTCRASH(background,("We Couldn't Load Menus/BlankWindow.wnd"));
+	if (background == nullptr)
+	{
+		// GeneralsX @bugfix Codex 04/08/2026 Fail closed when the required reset layout is unavailable in release builds.
+		RELEASE_CRASH("Missing required layout: Menus/BlankWindow.wnd");
+		return;
+	}
 	background->hide(FALSE);
 	background->bringForward();
 	background->getFirstWindow()->winClearStatus(WIN_STATUS_IMAGE);
@@ -960,8 +1091,10 @@ Bool GameEngine::canUpdateRegularGameLogic(UnsignedInt logicTimeQueryFlags)
 #else	//always allow this cheat key if we're in a replay game.
 	const Bool useFastMode = TheGlobalData->m_TiVOFastMode && TheGameLogic->isInReplayGame();
 #endif
+	const Bool useBotMatchFastMode = TheCommandLineBotMatchMap[0] != '\0' && TheCommandLineBotMatchSpeed > 1;
+	const Bool useReplayFastMode = !TheGlobalData->m_simulateReplays.empty() && TheCommandLineReplaySpeed > 1;
 
-	if (useFastMode || !enabled || logicTimeScaleFps >= maxRenderFps)
+	if (useFastMode || useBotMatchFastMode || useReplayFastMode || !enabled || logicTimeScaleFps >= maxRenderFps)
 	{
 		// Logic time scale is uncapped or larger equal Render FPS. Update straight away.
 		return true;
@@ -1033,97 +1166,157 @@ extern HWND ApplicationHWnd;
  */
 void GameEngine::execute()
 {
-#if defined(RTS_DEBUG)
-	DWORD startTime = timeGetTime() / 1000;
-#endif
-
 	// pretty basic for now
 	while( !m_quitting )
+		executeFrame();
+}
+
+// GeneralsX @port Codex 04/08/2026 Expose one deterministic iteration for browser frame scheduling.
+void GameEngine::executeFrame()
+{
+	const Int64 botMatchFrameStart = TheCommandLineBotMatchMap[0] != '\0' ? getBotMatchCounter() : 0;
+#if defined(RTS_DEBUG)
+	static const DWORD startTime = timeGetTime() / 1000;
+#endif
+
+	//if (TheGlobalData->m_vTune)
+	{
+#ifdef PERF_TIMERS
+		PerfGather::resetAll();
+#endif
+	}
+
 	{
 
-		//if (TheGlobalData->m_vTune)
-		{
-#ifdef PERF_TIMERS
-			PerfGather::resetAll();
-#endif
-		}
-
-		{
-
 #if defined(RTS_DEBUG)
+		{
+			// enter only if in benchmark mode
+			if (TheGlobalData->m_benchmarkTimer > 0)
 			{
-				// enter only if in benchmark mode
-				if (TheGlobalData->m_benchmarkTimer > 0)
+				DWORD currentTime = timeGetTime() / 1000;
+				if (TheGlobalData->m_benchmarkTimer < currentTime - startTime)
 				{
-					DWORD currentTime = timeGetTime() / 1000;
-					if (TheGlobalData->m_benchmarkTimer < currentTime - startTime)
+					if (TheGameLogic->isInGame())
 					{
-						if (TheGameLogic->isInGame())
+						if (TheRecorder->getMode() == RECORDERMODETYPE_RECORD)
 						{
-							if (TheRecorder->getMode() == RECORDERMODETYPE_RECORD)
-							{
-								TheRecorder->stopRecording();
-							}
-							TheGameLogic->clearGameData();
+							TheRecorder->stopRecording();
 						}
-						TheGameEngine->setQuitting(TRUE);
+						TheGameLogic->clearGameData();
 					}
+					TheGameEngine->setQuitting(TRUE);
 				}
 			}
+		}
 #endif
 
+		{
+			try
 			{
+				// compute a frame
+				update();
+			}
+			catch (INIException e)
+			{
+				// Release CRASH doesn't return, so don't worry about executing additional code.
+				if (e.mFailureMessage)
+					RELEASE_CRASH((e.mFailureMessage));
+				else
+					RELEASE_CRASH(("Uncaught Exception in GameEngine::update"));
+			}
+			catch (...)
+			{
+				// try to save info off
 				try
 				{
-					// compute a frame
-					update();
-				}
-				catch (INIException e)
-				{
-					// Release CRASH doesn't return, so don't worry about executing additional code.
-					if (e.mFailureMessage)
-						RELEASE_CRASH((e.mFailureMessage));
-					else
-						RELEASE_CRASH(("Uncaught Exception in GameEngine::update"));
+					if (TheRecorder && TheRecorder->getMode() == RECORDERMODETYPE_RECORD && TheRecorder->isMultiplayer())
+						TheRecorder->cleanUpReplayFile();
 				}
 				catch (...)
 				{
-					// try to save info off
-					try
-					{
-						if (TheRecorder && TheRecorder->getMode() == RECORDERMODETYPE_RECORD && TheRecorder->isMultiplayer())
-							TheRecorder->cleanUpReplayFile();
-					}
-					catch (...)
-					{
-					}
-					RELEASE_CRASH(("Uncaught Exception in GameEngine::update"));
 				}
+				RELEASE_CRASH(("Uncaught Exception in GameEngine::update"));
 			}
-
-			// TheFramePacer->update() sleeps here to hold the render FPS cap (RenderFpsPreset /
-			// GlobalData::m_framesPerSecondLimit). Because input is serviced once per iteration of
-			// this loop (SDL poll + GameClient::UPDATE message processing, above), this pacing wait
-			// also throttles the input sampling rate. A low FPS cap therefore makes the mouse feel
-			// laggy (hard to click moving units) even though the fixed 30 Hz simulation is unchanged.
-			// See RenderFpsPreset::s_fpsValues in FrameRateLimit.cpp for the full explanation.
-			TheFramePacer->update();
-
-			// NOTE: TheDisplay->draw() is called via TheGameClient->UPDATE() above.
-			// GameClient::update() dispatches TheDisplay->DRAW() each frame.
-			// Do NOT add an extra draw() call here - it would double-present per frame.
 		}
+
+		// TheFramePacer->update() sleeps here to hold the render FPS cap (RenderFpsPreset /
+		// GlobalData::m_framesPerSecondLimit). Because input is serviced once per iteration of
+		// this loop (SDL poll + GameClient::UPDATE message processing, above), this pacing wait
+		// also throttles the input sampling rate. A low FPS cap therefore makes the mouse feel
+		// laggy (hard to click moving units) even though the fixed 30 Hz simulation is unchanged.
+		// See RenderFpsPreset::s_fpsValues in FrameRateLimit.cpp for the full explanation.
+		TheFramePacer->update();
+
+		if (TheCommandLineBotMatchMap[0] != '\0' && TheGameLogic->isInGame() &&
+			!TheGameLogic->isLoadingMap() && TheGameLogic->getFrame() > 0 &&
+			TheGameClient->isDrawingEnabled())
+		{
+			const Int64 now = getBotMatchCounter();
+			const Int64 frequency = 1000000;
+			if (m_botMatchStartCounter == 0)
+				m_botMatchStartCounter = botMatchFrameStart;
+			const double frameMilliseconds = 1000.0 * static_cast<double>(now - botMatchFrameStart) /
+				static_cast<double>(frequency);
+			m_botMatchFrameMilliseconds += frameMilliseconds;
+			m_botMatchMaxFrameMilliseconds = max(m_botMatchMaxFrameMilliseconds, frameMilliseconds);
+			++m_botMatchRenderFrames;
+			const UnsignedInt drawCalls = static_cast<UnsignedInt>(max(0, TheDisplay->getLastFrameDrawCalls()));
+			m_botMatchDrawCalls += drawCalls;
+			m_botMatchMaxDrawCalls = max(m_botMatchMaxDrawCalls, drawCalls);
+
+			const UnsignedInt endFrame = TheVictoryConditions->getEndFrame();
+			if (!m_botMatchResultEmitted &&
+				(endFrame != 0 || TheGameLogic->getFrame() >= TheCommandLineBotMatchMaxFrames))
+			{
+				m_botMatchResultEmitted = TRUE;
+				if (endFrame != 0 && TheRecorder && TheRecorder->getMode() == RECORDERMODETYPE_RECORD)
+					TheRecorder->stopRecording();
+				const UnsignedInt crc = TheGameLogic->getCRC(CRC_RECALC);
+				const double wallSeconds = static_cast<double>(now - m_botMatchStartCounter) /
+					static_cast<double>(frequency);
+				const double averageFPS = wallSeconds > 0.0 ? m_botMatchRenderFrames / wallSeconds : 0.0;
+				const double averageFrameMilliseconds = m_botMatchRenderFrames > 0 ?
+					m_botMatchFrameMilliseconds / m_botMatchRenderFrames : 0.0;
+				const double averageDrawCalls = m_botMatchRenderFrames > 0 ?
+					static_cast<double>(m_botMatchDrawCalls) / m_botMatchRenderFrames : 0.0;
+				Int winnerSlot = -1;
+				if (endFrame != 0 && TheSkirmishGameInfo)
+				{
+					const Bool firstDefeated = TheSkirmishGameInfo->getConstSlot(1)->lastFrameInGame() != 0;
+					const Bool secondDefeated = TheSkirmishGameInfo->getConstSlot(2)->lastFrameInGame() != 0;
+					if (firstDefeated != secondDefeated)
+						winnerSlot = firstDefeated ? 2 : 1;
+				}
+#if defined(__EMSCRIPTEN__)
+				const char *platform = "webgpu";
+#elif defined(__APPLE__)
+				const char *platform = "macos";
+#else
+				const char *platform = "linux";
+#endif
+				fprintf(stderr,
+					"GENERALSX_BOT_MATCH_RESULT {\"platform\":\"%s\",\"reason\":\"%s\",\"logicFrame\":%u,\"endFrame\":%u,\"winnerSlot\":%d,\"logicCRC\":\"%08X\",\"renderFrames\":%u,\"wallSeconds\":%.6f,\"averageFPS\":%.3f,\"averageFrameMs\":%.3f,\"maxFrameMs\":%.3f,\"averageDrawCalls\":%.3f,\"maxDrawCalls\":%u}\n",
+					platform, endFrame != 0 ? "victory" : "frame-limit", TheGameLogic->getFrame(), endFrame,
+					winnerSlot, crc, m_botMatchRenderFrames, wallSeconds, averageFPS, averageFrameMilliseconds,
+					m_botMatchMaxFrameMilliseconds, averageDrawCalls, m_botMatchMaxDrawCalls);
+				fflush(stderr);
+				TheGameLogic->setGamePaused(TRUE, FALSE, FALSE);
+			}
+		}
+
+		// NOTE: TheDisplay->draw() is called via TheGameClient->UPDATE() above.
+		// GameClient::update() dispatches TheDisplay->DRAW() each frame.
+		// Do NOT add an extra draw() call here - it would double-present per frame.
+	}
 
 #ifdef PERF_TIMERS
-		if (!m_quitting && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isGamePaused())
-		{
-			PerfGather::dumpAll(TheGameLogic->getFrame());
-			PerfGather::displayGraph(TheGameLogic->getFrame());
-			PerfGather::resetAll();
-		}
-#endif
-
+	if (!m_quitting && TheGameLogic->isInGame() && !TheGameLogic->isInShellGame() && !TheGameLogic->isGamePaused())
+	{
+		PerfGather::dumpAll(TheGameLogic->getFrame());
+		PerfGather::displayGraph(TheGameLogic->getFrame());
+		PerfGather::resetAll();
 	}
+#endif
 }
 
 /** -----------------------------------------------------------------------------------------------

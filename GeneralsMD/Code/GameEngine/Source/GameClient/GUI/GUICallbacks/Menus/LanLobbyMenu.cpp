@@ -363,6 +363,9 @@ static void playerTooltip(GameWindow *window,
 //-------------------------------------------------------------------------------------------------
 void LanLobbyMenuInit( WindowLayout *layout, void *userData )
 {
+	// GeneralsX @feature Codex 04/08/2026 Keep LAN readiness visible in release browser acceptance runs.
+	fprintf(stderr, "GENERALSX_LAN_LOBBY_INIT start\n");
+	fflush(stderr);
 	LANnextScreen = nullptr;
 	LANbuttonPushed = false;
 	LANisShuttingDown = false;
@@ -489,7 +492,8 @@ void LanLobbyMenuInit( WindowLayout *layout, void *userData )
 	// GeneralsX @build GitHubCopilot 11/04/2026 Log LAN bind attempt from lobby startup path.
 	/* 	fprintf(stderr, "[LAN86] LanLobbyMenuInit SetLocalIP begin %d.%d.%d.%d\n", PRINTF_IP_AS_4_INTS(IP));
 	fflush(stderr); */
-	if (TheLAN->SetLocalIP(IP) == FALSE) {
+	const Bool lanBound = TheLAN->SetLocalIP(IP);
+	if (lanBound == FALSE) {
 		LANSocketErrorDetected = TRUE;
 		// GeneralsX @build GitHubCopilot 11/04/2026 Explicit failure breadcrumb for LAN socket initialization.
 		/* 		fprintf(stderr, "[LAN86] LanLobbyMenuInit SetLocalIP failed %d.%d.%d.%d\n", PRINTF_IP_AS_4_INTS(IP));
@@ -501,6 +505,9 @@ void LanLobbyMenuInit( WindowLayout *layout, void *userData )
 		/* 		fprintf(stderr, "[LAN86] LanLobbyMenuInit SetLocalIP ok %d.%d.%d.%d\n", PRINTF_IP_AS_4_INTS(IP));
 		fflush(stderr); */
 	}
+	fprintf(stderr, "GENERALSX_LAN_LOBBY_READY {\"ip\":\"%d.%d.%d.%d\",\"bound\":%s}\n",
+		PRINTF_IP_AS_4_INTS(IP), lanBound ? "true" : "false");
+	fflush(stderr);
 
 	//Initialize the gadgets on the window
 	//UnicodeString	txtInput;

@@ -496,6 +496,17 @@ void LANAPI::update()
 			}
 
 			LANMessage *msg = (LANMessage *)(m_transport->m_inBuffer[i].data);
+#if defined(__EMSCRIPTEN__)
+			static Bool browserPeerReported = FALSE;
+			if (!browserPeerReported && (msg->messageType == LANMessage::MSG_REQUEST_LOCATIONS
+					|| msg->messageType == LANMessage::MSG_LOBBY_ANNOUNCE))
+			{
+				fprintf(stderr, "GENERALSX_LAN_PEER_DISCOVERED {\"source\":\"%d.%d.%d.%d\",\"messageType\":%u}\n",
+					PRINTF_IP_AS_4_INTS(senderIP), msg->messageType);
+				fflush(stderr);
+				browserPeerReported = TRUE;
+			}
+#endif
 			/* 			fprintf(stderr, "[LAN86] recv type=%s (%u) len=%d from %d.%d.%d.%d local=%d.%d.%d.%d\n",
 				GetMessageTypeString(msg->messageType).str(), msg->messageType, m_transport->m_inBuffer[i].length,
 				PRINTF_IP_AS_4_INTS(senderIP), PRINTF_IP_AS_4_INTS(m_localIP));

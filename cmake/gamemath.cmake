@@ -46,6 +46,11 @@ if(SAGE_USE_DETERMINISTIC_MATH)
     # Make GameMath available (FetchContent_MakeAvailable is idempotent)
     FetchContent_MakeAvailable(gamemath)
 
+    if(EMSCRIPTEN)
+        # GeneralsX @build Codex 04/08/2026 WebAssembly has no floating-point exception flags; preserve numeric results with no-op flags.
+        target_compile_definitions(gamemath PRIVATE FE_INVALID=0 FE_INEXACT=0 FE_UNDERFLOW=0)
+    endif()
+
     # Ensure GameMath includes are available to ALL targets
     # to prevent one-definition-rule violations and ensure USE_DETERMINISTIC_MATH activates consistently.
     include_directories(${gamemath_SOURCE_DIR}/include)

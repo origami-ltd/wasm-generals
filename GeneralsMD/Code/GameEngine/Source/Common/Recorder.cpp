@@ -40,7 +40,10 @@
 
 #include "GameNetwork/LANAPICallbacks.h"
 #include "GameNetwork/GameMessageParser.h"
+#if defined(SAGE_USE_GAMESPY)
+// GeneralsX @build Codex 04/08/2026 Keep replay support independent from unavailable browser online services.
 #include "GameNetwork/GameSpy/PeerDefs.h"
+#endif
 #include "GameNetwork/networkutil.h"
 #include "GameLogic/GameLogic.h"
 #include "Common/RandomValue.h"
@@ -604,8 +607,12 @@ void RecorderClass::startRecording(GameDifficulty diff, Int originalGameMode, In
 		}
 		else
 		{
+#if defined(SAGE_USE_GAMESPY)
 			theSlotList = GameInfoToAsciiString(TheGameSpyGame);
 			localIndex = TheGameSpyGame->getLocalSlotNum();
+#else
+			DEBUG_ASSERTCRASH(FALSE, ("Network game has no active LAN or GameSpy backend"));
+#endif
 		}
 	}
 	else
@@ -1117,16 +1124,16 @@ void RecorderClass::handleCRCMessage(UnsignedInt newCRC, Int playerIndex, Bool f
 
 			// Now also prints a UI message for it.
 			const UnicodeString mismatchDetailsStr = TheGameText->FETCH_OR_SUBSTITUTE("GUI:CRCMismatchDetails", L"InGame:%8.8X Replay:%8.8X Frame:%d");
-			TheInGameUI->message(mismatchDetailsStr, playbackCRC, newCRC, mismatchFrame);
+			TheInGameUI->message(mismatchDetailsStr, newCRC, playbackCRC, mismatchFrame);
 
 			DEBUG_LOG(("Replay has gone out of sync!\nInGame:%8.8X Replay:%8.8X\nFrame:%d",
-				playbackCRC, newCRC, mismatchFrame));
+				newCRC, playbackCRC, mismatchFrame));
 
 			// GeneralsX @bugfix fbraz 05/05/2026 Print detailed mismatch info for headless replay diagnostics; distinguishes game-state desync from map-not-found failures.
 			// Print Mismatch in case we are simulating replays from console.
 			printf("CRC Mismatch in Frame %d\n", mismatchFrame);
 			fprintf(stderr, "[GeneralsX] REPLAY_CRC_MISMATCH frame=%u inGame=0x%08X replay=0x%08X\n",
-				mismatchFrame, playbackCRC, newCRC);
+				mismatchFrame, newCRC, playbackCRC);
 			fprintf(stderr, "[GeneralsX] This replay is incompatible with the current map/game-code state.\n");
 
 			// TheSuperHackers @tweak Pause the game on mismatch.
@@ -1197,8 +1204,12 @@ Bool RecorderClass::playbackFile(AsciiString filename)
 	Bool success = readReplayHeader( header );
 	if (!success)
 	{
+		fprintf(stderr, "GENERALSX_REPLAY_START_FAILED\n");
+		fflush(stderr);
 		return FALSE;
 	}
+	fprintf(stderr, "GENERALSX_REPLAY_STARTED {\"frames\":%u}\n", header.frameCount);
+	fflush(stderr);
 
 #ifdef DEBUG_CRASHING
 	Bool versionStringDiff = header.versionString != TheVersion->getUnicodeVersion();
@@ -1256,15 +1267,15 @@ Bool RecorderClass::playbackFile(AsciiString filename)
 	}
 #endif
 
-	Bool isMultiplayer = m_gameInfo.getSlot(header.localPlayerIndex)->getIP() != 0;
-	m_crcInfo = NEW CRCInfo(header.localPlayerIndex, isMultiplayer);
 	REPLAY_CRC_INTERVAL = m_gameInfo.getCRCInterval();
-	DEBUG_LOG(("Player index is %d, replay CRC interval is %d", m_crcInfo->getLocalPlayer(), REPLAY_CRC_INTERVAL));
 
 	Int difficulty = 0;
 	m_file->read(&difficulty, sizeof(difficulty));
 
 	m_file->read(&m_originalGameMode, sizeof(m_originalGameMode));
+	const Bool isMultiplayer = m_originalGameMode == GAME_LAN || m_originalGameMode == GAME_INTERNET;
+	m_crcInfo = NEW CRCInfo(header.localPlayerIndex, isMultiplayer);
+	DEBUG_LOG(("Player index is %d, replay CRC interval is %d", m_crcInfo->getLocalPlayer(), REPLAY_CRC_INTERVAL));
 
 	Int rankPoints = 0;
 	m_file->read(&rankPoints, sizeof(rankPoints));
@@ -1714,8 +1725,10 @@ AsciiString RecorderClass::getLastReplayFileName()
 		GameInfo *game = nullptr;
 		if (TheLAN)
 			game = TheLAN->GetMyGame();
+#if defined(SAGE_USE_GAMESPY)
 		else if (TheGameSpyInfo)
 			game = TheGameSpyGame;
+#endif
 		if (game)
 		{
 			AsciiString players;

@@ -236,7 +236,7 @@ AnimatedCursor* SDL3Mouse::loadCursorFromFile(const char* filepath)
 			int frame_index = 0;
 			int hot_spot_x = 0;
 			int hot_spot_y = 0;
-			#ifdef __linux__
+			#if defined(__linux__) || defined(__EMSCRIPTEN__)
 			bool has_hotspot = false;
 			#endif
 
@@ -259,7 +259,7 @@ AnimatedCursor* SDL3Mouse::loadCursorFromFile(const char* filepath)
 
 					// Allow specifying the hot spot via properties on the surface
 					SDL_PropertiesID props = SDL_GetSurfaceProperties(surface);
-					#ifdef __linux__
+					#if defined(__linux__) || defined(__EMSCRIPTEN__)
 					if (!has_hotspot)
 					{
 						hot_spot_x = (int)SDL_GetNumberProperty(props, SDL_PROP_SURFACE_HOTSPOT_X_NUMBER, 0);
@@ -289,7 +289,7 @@ AnimatedCursor* SDL3Mouse::loadCursorFromFile(const char* filepath)
 				const int clamped_rate = (cursor->m_frameRate > 0) ? cursor->m_frameRate : 4;
 				const Uint32 frame_duration_ms = (Uint32)((clamped_rate * 1000) / 60);
 				SDL_CursorFrameInfo frame_infos[MAX_2D_CURSOR_ANIM_FRAMES];
-				#ifdef __linux__
+				#if defined(__linux__) || defined(__EMSCRIPTEN__)
 				SDL_Surface *first_surface = cursor->m_frameSurfaces[0];
 				#endif
 
@@ -299,7 +299,7 @@ AnimatedCursor* SDL3Mouse::loadCursorFromFile(const char* filepath)
 					frame_infos[i].duration = frame_duration_ms;
 				}
 
-				#ifdef __linux__
+				#if defined(__linux__) || defined(__EMSCRIPTEN__)
 				if (first_surface)
 				{
 					if (hot_spot_x < 0) hot_spot_x = 0;
@@ -314,7 +314,7 @@ AnimatedCursor* SDL3Mouse::loadCursorFromFile(const char* filepath)
 				if (!cursor->m_cursor)
 				{
 					DEBUG_LOG(("SDL3Mouse::loadCursorFromFile: SDL_CreateAnimatedCursor failed [%s]", SDL_GetError()));
-					#ifdef __linux__
+					#if defined(__linux__) || defined(__EMSCRIPTEN__)
 					// GeneralsX @bugfix BenderAI 11/05/2026 Fallback to static cursor when ANI animation fails.
 					if (first_surface)
 					{

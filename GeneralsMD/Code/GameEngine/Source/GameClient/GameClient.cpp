@@ -35,6 +35,7 @@
 
 // USER INCLUDES //////////////////////////////////////////////////////////////
 #include "Common/ActionManager.h"
+#include "Common/CommandLine.h"
 #include "Common/GameEngine.h"
 #include "Common/GameState.h"
 #include "Common/GameUtility.h"
@@ -112,6 +113,7 @@ GameClient::GameClient()
 	TheDrawGroupInfo = new DrawGroupInfo;
 
 	m_intro = nullptr;
+	m_drawingEnabled = TRUE;
 }
 
 //std::vector<std::string>	preloadTextureNamesGlobalHack;
@@ -449,7 +451,7 @@ void GameClient::init()
 		TheSnowManager->setName("TheSnowManager");
 	}
 
-	m_intro = NEW Intro;
+	m_intro = TheCommandLineLoadStateFile[0] == '\0' ? NEW Intro : nullptr;
 
 #ifdef PERF_TIMERS
 	TheGraphDraw = new GraphDraw;
@@ -591,7 +593,8 @@ void GameClient::update()
 	{
 		// redraw all views, update the GUI
 		TheDisplay->UPDATE();
-		TheDisplay->DRAW();
+		if (m_drawingEnabled)
+			TheDisplay->DRAW();
 		return;
 	}
 
@@ -726,7 +729,8 @@ void GameClient::update()
 	// redraw all views, update the GUI
 	//if(TheGameLogic->getFrame() >= 2)
 
-		TheDisplay->DRAW();
+		if (m_drawingEnabled)
+			TheDisplay->DRAW();
 	}
 
 	{

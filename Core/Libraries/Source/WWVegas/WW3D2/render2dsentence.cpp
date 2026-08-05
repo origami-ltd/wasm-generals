@@ -1636,6 +1636,7 @@ FontCharsClass::Update_Current_Buffer (int char_width)
 
 #if defined(SAGE_USE_FREETYPE) && !defined(_WIN32)
 
+#if defined(SAGE_USE_FONTCONFIG)
 ////////////////////////////////////////////////////////////////////////////////////
 //
 //	Locate_Font_FontConfig
@@ -1693,6 +1694,7 @@ FontCharsClass::Locate_Font_FontConfig (const char *font_name)
 
 	return font_path;
 }
+#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -1727,10 +1729,13 @@ FontCharsClass::Create_Freetype_Font (const char *font_name)
 	const int dotsPerInch = 96;
 	int font_height = FT_MulDiv( PointSize, dotsPerInch, 72 );
 
-	//
-	//	Locate the font file using Fontconfig
-	//
+#if defined(SAGE_USE_FONTCONFIG)
 	const char *font_path = Locate_Font_FontConfig( font_name );
+#elif defined(SAGE_USE_WEBGPU)
+	const char *font_path = "/fonts/GeneralsX.ttf";
+#else
+	const char *font_path = nullptr;
+#endif
 	if ( font_path == nullptr ) {
 		FT_Done_FreeType( FTLibrary );
 		FTLibrary = nullptr;

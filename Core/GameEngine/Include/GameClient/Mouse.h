@@ -147,8 +147,7 @@ enum CursorCaptureMode_ CPP_11(: CursorCaptureMode)
 	CursorCaptureMode_EnabledInFullscreenGame = 1<<2, // Captures the cursor when in game while the app is fullscreen
 	CursorCaptureMode_EnabledInFullscreenMenu = 1<<3, // Captures the cursor when in menu while the app is fullscreen
 
-	CursorCaptureMode_Default =
-		CursorCaptureMode_EnabledInWindowedGame |
+	CursorCaptureMode_Default = CursorCaptureMode_EnabledInWindowedGame |
 		CursorCaptureMode_EnabledInFullscreenGame |
 		CursorCaptureMode_EnabledInFullscreenMenu,
 };

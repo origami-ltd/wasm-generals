@@ -31,6 +31,7 @@
 #include "Common/FramePacer.h"
 #include "Common/GameType.h"
 #include "Common/GameEngine.h"
+#include "Common/CommandLine.h"
 #include "Common/MessageStream.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
@@ -203,6 +204,24 @@ GameMessageDisposition LookAtTranslator::translateGameMessage(const GameMessage 
 	GameMessageDisposition disp = KEEP_MESSAGE;
 
 	GameMessage::Type t = msg->getType();
+	if (TheCommandLinePauseFrame != 0 && !TheGameLogic->isInReplayGame())
+	{
+		switch (t)
+		{
+		case GameMessage::MSG_RAW_KEY_DOWN:
+		case GameMessage::MSG_RAW_KEY_UP:
+		case GameMessage::MSG_RAW_MOUSE_RIGHT_BUTTON_DOWN:
+		case GameMessage::MSG_RAW_MOUSE_RIGHT_BUTTON_UP:
+		case GameMessage::MSG_RAW_MOUSE_MIDDLE_BUTTON_DOWN:
+		case GameMessage::MSG_RAW_MOUSE_MIDDLE_BUTTON_UP:
+		case GameMessage::MSG_RAW_MOUSE_POSITION:
+		case GameMessage::MSG_RAW_MOUSE_WHEEL:
+			return DESTROY_MESSAGE;
+		default:
+			break;
+		}
+	}
+
 	switch (t)
 	{
 		//-----------------------------------------------------------------------------

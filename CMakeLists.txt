@@ -52,6 +52,11 @@ include(cmake/debug_strip.cmake)
 
 include(FetchContent)
 
+# GeneralsX @feature Codex 04/08/2026 Configure WebAssembly and WebGPU before backend selection.
+if(SAGE_USE_WEBGPU)
+    include(cmake/webgpu.cmake)
+endif()
+
 # MinGW-w64 specific configuration
 if(MINGW)
     include(cmake/mingw.cmake)

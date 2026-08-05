@@ -45,8 +45,11 @@
 #include "WWSaveLoad/definition.h"
 #include "WWSaveLoad/definitionmgr.h"
 #include "WWSaveLoad/definitionclassids.h"
+#if !defined(SAGE_USE_WEBGPU)
+// GeneralsX @build Codex 04/08/2026 Browser builds use the audio-neutral bridge below, not Miles declarations.
 #include "WWAudio/WWAudio.h"
 #include "WWAudio/AudibleSound.h"
+#endif
 #include "htree.h"
 #include "hanim.h"
 #include "soundlibrarybridge.h"

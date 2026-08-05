@@ -39,6 +39,7 @@
 #include "Common/AudioAffect.h"
 #include "Common/AudioHandleSpecialValues.h"
 #include "Common/BuildAssistant.h"
+#include "Common/CommandLine.h"
 #include "Common/CRCDebug.h"
 #include "Common/FramePacer.h"
 #include "Common/GameAudio.h"
@@ -693,9 +694,11 @@ LoadScreen *GameLogic::getLoadScreen( Bool loadingSaveGame )
 	case GAME_REPLAY:
 		return NEW ShellGameLoadScreen;
 		break;
+#if defined(SAGE_USE_GAMESPY)
 	case GAME_INTERNET:
 		return NEW GameSpyLoadScreen;
 		break;
+#endif
 	case GAME_NONE:
 	default:
 		return nullptr;
@@ -1202,6 +1205,7 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 
 	// reset the frame counter
 	m_frame = 0;
+	m_pauseFrame = m_gameMode == GAME_REPLAY ? TheCommandLinePauseFrame : 0;
 	m_hasUpdated = FALSE;
 
 #ifdef DEBUG_CRC
@@ -1286,8 +1290,10 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 		}
 		else
 		{
+			#if defined(SAGE_USE_GAMESPY)
 			DEBUG_LOG(("Starting gamespy game"));
 			TheGameInfo = TheGameSpyGame;	/// @todo: MDC add back in after demo
+			#endif
 		}
 	}
 	else
@@ -1296,7 +1302,7 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 		{
 			TheGameInfo = TheRecorder->getGameInfo();
 		}
-		else if(m_gameMode == GAME_SKIRMISH)
+		else if(m_gameMode == GAME_SKIRMISH || (m_gameMode == GAME_REPLAY && TheSkirmishGameInfo))
 		{
 		  TheGameInfo = TheSkirmishGameInfo;
 		}
@@ -2155,6 +2161,15 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 	updateLoadProgress(LOAD_PROGRESS_POST_PRELOAD_ASSETS);
 
 	// TheSuperHackers @info Initialize the camera height limits to default if the resolution was changed
+	if (TheCommandLineMaxCameraHeight > 0.0f)
+		TheWritableGlobalData->m_maxCameraHeight = TheCommandLineMaxCameraHeight;
+	if (TheCommandLineMinCameraHeight > 0.0f)
+		TheWritableGlobalData->m_minCameraHeight = TheCommandLineMinCameraHeight;
+	if (TheGlobalData->m_minCameraHeight > TheGlobalData->m_maxCameraHeight)
+	{
+		printf("Minimum camera height exceeds maximum camera height\n");
+		exit(1);
+	}
 	TheTacticalView->setCameraHeightAboveGroundLimitsToDefault();
 	TheTacticalView->setAngleToDefault();
 	TheTacticalView->setPitchToDefault();
@@ -2379,7 +2394,7 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 ///		ShowControlBar(FALSE);
 
 		// explicitly set the Control bar to Observer Mode
-		if(m_gameMode == GAME_REPLAY )
+		if(m_gameMode == GAME_REPLAY && TheCommandLinePauseFrame == 0)
 		{
 			rts::changeLocalPlayer(observerPlayer);
 
@@ -2457,6 +2472,7 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 	TheWritableGlobalData->m_loadScreenRender = FALSE;	///< mark to resume rendering as normal
 
 	// if we're in a gamespy game, mark us as playing
+#if defined(SAGE_USE_GAMESPY)
 	if (TheGameSpyBuddyMessageQueue && TheGameSpyGame && isInInternetGame())
 	{
 		BuddyRequest req;
@@ -2467,6 +2483,7 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 			ARRAY_SIZE(req.arg.status.locationString));
 		TheGameSpyBuddyMessageQueue->addRequest(req);
 	}
+#endif
 
   if( loadingSaveGame == FALSE )
   {
@@ -2492,8 +2509,10 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 
 	//Assume that getting this far means we've successfully entered an online game.
 	//Add an additional disconnection to player stats in case he doesn't complete this game. -MW
+#if defined(SAGE_USE_GAMESPY)
 	if (TheGameSpyInfo)
 		TheGameSpyInfo->updateAdditionalGameSpyDisconnections(1);
+#endif
 
 
   if ( isInReplayGame() && TheInGameUI && TheGameText )
@@ -4098,6 +4117,31 @@ void GameLogic::update()
 	{
 		m_frame++;
 		m_hasUpdated = TRUE;
+		if (m_gameMode == GAME_REPLAY && m_frame == TheRecorder->getPlaybackFrameCount())
+		{
+			fprintf(stderr,
+				"GENERALSX_REPLAY_RESULT {\"logicFrame\":%u,\"logicCRC\":\"%08X\",\"crcMismatch\":%s}\n",
+				m_frame, getCRC(CRC_RECALC), TheRecorder->sawCRCMismatch() ? "true" : "false");
+			fflush(stderr);
+		}
+
+		static UnsignedInt reportedLanEndFrame = 0;
+		if (m_gameMode != GAME_LAN)
+		{
+			reportedLanEndFrame = 0;
+		}
+		else if (TheVictoryConditions != nullptr && TheVictoryConditions->getEndFrame() != 0
+			&& TheVictoryConditions->getEndFrame() != reportedLanEndFrame)
+		{
+			reportedLanEndFrame = TheVictoryConditions->getEndFrame();
+			fprintf(stderr,
+				"GENERALSX_LAN_MATCH_RESULT {\"logicFrame\":%u,\"endFrame\":%u,\"victory\":%s,\"defeat\":%s,\"crcMismatch\":%s}\n",
+				m_frame, reportedLanEndFrame,
+				TheVictoryConditions->isLocalAlliedVictory() ? "true" : "false",
+				TheVictoryConditions->isLocalAlliedDefeat() ? "true" : "false",
+				TheNetwork != nullptr && TheNetwork->sawCRCMismatch() ? "true" : "false");
+			fflush(stderr);
+		}
 	}
 }
 
@@ -4107,8 +4151,24 @@ void GameLogic::preUpdate()
 {
 	m_hasUpdated = FALSE;
 
+	if (m_gameMode == GAME_REPLAY && TheCommandLineReplayCheckpointInterval != 0 && m_frame != 0
+		&& m_frame % TheCommandLineReplayCheckpointInterval == 0)
+	{
+		fprintf(stderr,
+			"GENERALSX_REPLAY_CHECKPOINT {\"logicFrame\":%u,\"logicCRC\":\"%08X\",\"crcMismatch\":%s}\n",
+			m_frame, getCRC(CRC_RECALC), TheRecorder->sawCRCMismatch() ? "true" : "false");
+		fflush(stderr);
+	}
+
 	if (m_pauseFrame == m_frame && m_pauseFrame != 0)
 	{
+		if (m_gameMode == GAME_REPLAY)
+		{
+			fprintf(stderr,
+				"GENERALSX_REPLAY_CHECKPOINT {\"logicFrame\":%u,\"logicCRC\":\"%08X\",\"crcMismatch\":%s}\n",
+				m_frame, getCRC(CRC_RECALC), TheRecorder->sawCRCMismatch() ? "true" : "false");
+			fflush(stderr);
+		}
 		m_pauseFrame = 0;
 		Bool pause = TRUE;
 		Bool pauseMusic = FALSE;
@@ -4346,7 +4406,6 @@ UnsignedInt GameLogic::getCRC( Int mode, AsciiString deepCRCFileName )
 		}
 		xferCRC->open(crcName);
 	}
-
 	// calculate CRCs
 	Object *obj;
 	DEBUG_ASSERTCRASH(this == TheGameLogic, ("Not in GameLogic"));

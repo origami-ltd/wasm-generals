@@ -63,11 +63,13 @@
 #include "GameLogic/FPUControl.h"
 
 #include "Common/file.h"
+#ifdef RTS_HAS_FFMPEG
 #include "VideoDevice/FFmpeg/FFmpegFile.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
 }
+#endif
 
 #ifdef _INTERNAL
 //#pragma optimize("", off)
@@ -344,8 +346,7 @@ void MiniAudioManager::playAudioEvent(AudioEventRTS *event)
 		break;
 	}
 
-	// Use FFmpeg to decode the file into PCM, then feed to miniaudio.
-	// This avoids miniaudio's built-in decoders which hang on MP3 via VFS.
+	#ifdef RTS_HAS_FFMPEG
 	File *file = TheFileSystem->openFile(fileToPlay.str());
 	if (!file) {
 		DEBUG_LOG(("MiniAudio: Failed to open file: %s\n", fileToPlay.str()));
@@ -448,6 +449,19 @@ void MiniAudioManager::playAudioEvent(AudioEventRTS *event)
 	// Assign to PlayingAudio before any early returns below
 	audio->m_sound = sound;
 	audio->m_audioBuffer = audioBuffer;
+	#else
+	ma_sound *sound = (ma_sound *)malloc(sizeof(ma_sound));
+	ma_result result = ma_sound_init_from_file(&m_engine, fileToPlay.str(), flags, groupToUse, NULL, sound);
+	if (result != MA_SUCCESS) {
+		DEBUG_LOG(("MiniAudio: Failed to decode audio: %d for '%s'\n", result, fileToPlay.str()));
+		free(sound);
+		releasePlayingAudio(audio);
+		return;
+	}
+
+	audio->m_sound = sound;
+	audio->m_audioBuffer = NULL;
+	#endif
 
 	switch (info->m_soundType)
 	{

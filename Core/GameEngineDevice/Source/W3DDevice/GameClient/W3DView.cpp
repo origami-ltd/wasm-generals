@@ -2260,6 +2260,9 @@ void W3DView::setCameraHeightAboveGroundLimitsToDefault(Real heightScale)
 
 	m_maxHeightAboveGround = TheGlobalData->m_maxCameraHeight * aspectRatioScale * heightScale;
 	m_minHeightAboveGround = TheGlobalData->m_minCameraHeight * aspectRatioScale;
+	fprintf(stderr, "[GeneralsX] CAMERA_LIMITS view=%dx%d global=%g scale=%g heightScale=%g min=%g max=%g\n",
+		getWidth(), getHeight(), TheGlobalData->m_maxCameraHeight, aspectRatioScale, heightScale,
+		m_minHeightAboveGround, m_maxHeightAboveGround);
 
 	if (m_minHeightAboveGround > m_maxHeightAboveGround)
 		m_maxHeightAboveGround = m_minHeightAboveGround;

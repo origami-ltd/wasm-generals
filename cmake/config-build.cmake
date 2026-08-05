@@ -15,6 +15,13 @@ option(RTS_BUILD_OPTION_DEEP_CRC "Enable deep CRC snapshots on sync mismatch" ON
 option(SAGE_USE_SDL3 "Use SDL3 for windowing/input (Linux/macOS)" OFF)
 option(SAGE_USE_OPENAL "Use OpenAL for audio backend (Linux/macOS)" OFF)
 option(SAGE_USE_MINIAUDIO "Use MiniAudio for audio backend (Linux/macOS)" OFF)
+option(SAGE_USE_GAMESPY "Enable legacy GameSpy networking" ON)
+# GeneralsX @feature Codex 04/08/2026 Add explicit browser renderer selection.
+option(SAGE_USE_WEBGPU "Use WebGPU through Emscripten" OFF)
+
+if(SAGE_USE_WEBGPU AND NOT EMSCRIPTEN)
+    message(FATAL_ERROR "SAGE_USE_WEBGPU requires the Emscripten toolchain")
+endif()
 
 # GeneralsX @feature BenderAI 21/04/2026 In-game update checker via GitHub Releases API (SDL3+libcurl builds only)
 # Default ON when SDL3 is enabled, but only if the user has not explicitly set SAGE_UPDATE_CHECK.
@@ -48,6 +55,9 @@ add_feature_info(FFmpegSupport RTS_BUILD_OPTION_FFMPEG "Building with FFmpeg sup
 add_feature_info(DeepCRC RTS_BUILD_OPTION_DEEP_CRC "Enable deep CRC snapshots on sync mismatch")
 add_feature_info(SDL3Windowing SAGE_USE_SDL3 "Using SDL3 for windowing (Linux)")
 add_feature_info(OpenALAudio SAGE_USE_OPENAL "Using OpenAL for audio (Linux)")
+add_feature_info(MiniAudio SAGE_USE_MINIAUDIO "Using MiniAudio for audio (Linux/macOS)")
+add_feature_info(WebGPUGraphics SAGE_USE_WEBGPU "Using WebGPU graphics in browsers")
+add_feature_info(GameSpyNetworking SAGE_USE_GAMESPY "Using legacy GameSpy networking")
 add_feature_info(UpdateCheck SAGE_UPDATE_CHECK "In-game update check via GitHub Releases API")
 add_feature_info(SagePatch RTS_BUILD_OPTION_SAGE_PATCH "Build SagePatch QoL extras (macOS)")
 
@@ -91,10 +101,15 @@ endif()
 
 if(UNIX)
     target_compile_definitions(core_config INTERFACE _UNIX)
-    # Ubuntu 24.04+ and macOS have strlcpy/strlcat/wcslcpy/wcslcat in libc
-    # GeneralsX @TheSuperHackers @build BenderAI 11/02/2026 Added guards for glibc 2.38+
-    target_compile_definitions(core_config INTERFACE 
-        HAVE_STRLCPY HAVE_STRLCAT HAVE_WCSLCPY HAVE_WCSLCAT)
+    if(NOT EMSCRIPTEN)
+        # Ubuntu 24.04+ and macOS have strlcpy/strlcat/wcslcpy/wcslcat in libc
+        # GeneralsX @TheSuperHackers @build BenderAI 11/02/2026 Added guards for glibc 2.38+
+        target_compile_definitions(core_config INTERFACE
+            HAVE_STRLCPY HAVE_STRLCAT HAVE_WCSLCPY HAVE_WCSLCAT)
+    else()
+        # GeneralsX @build Codex 04/08/2026 Emscripten provides only the narrow BSD string helpers.
+        target_compile_definitions(core_config INTERFACE HAVE_STRLCPY HAVE_STRLCAT)
+    endif()
 endif()
 
 if(RTS_BUILD_OPTION_DEBUG)
@@ -130,6 +145,11 @@ if(SAGE_USE_MINIAUDIO)
     message(STATUS "MiniAudio audio backend enabled")
 endif()
 
+if(SAGE_USE_GAMESPY)
+    # GeneralsX @build Codex 04/08/2026 Expose the selected legacy online backend to shared engine code.
+    target_compile_definitions(core_config INTERFACE SAGE_USE_GAMESPY)
+endif()
+
 # GeneralsX @feature BenderAI 21/04/2026 Update check compile definition
 if(SAGE_UPDATE_CHECK)
     target_compile_definitions(core_config INTERFACE SAGE_UPDATE_CHECK)
@@ -144,6 +164,11 @@ endif()
 if(RTS_BUILD_OPTION_DEEP_CRC)
     target_compile_definitions(core_config INTERFACE DEEP_CRC_TO_MEMORY=1)
     message(STATUS "Deep CRC logging on sync mismatch enabled")
+endif()
+
+if(SAGE_USE_WEBGPU)
+    # GeneralsX @feature Codex 04/08/2026 Expose the selected browser backend to shared engine code.
+    target_compile_definitions(core_config INTERFACE SAGE_USE_WEBGPU)
 endif()
 
 # macOS MoltenVK detection (Phase 5)

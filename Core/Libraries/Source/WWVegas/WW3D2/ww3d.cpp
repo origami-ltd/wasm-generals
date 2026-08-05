@@ -1180,6 +1180,14 @@ void WW3D::Update_Logic_Frame_Time(float milliseconds)
 	FractionalSyncMs += milliseconds;
 }
 
+void WW3D::Set_Logic_Time_Milliseconds(unsigned int milliseconds)
+{
+	PreviousSyncTime = milliseconds >= SyncTime ? SyncTime : milliseconds;
+	SyncTime = milliseconds;
+	FractionalSyncMs = 0.0f;
+	LogicFrameTimeMs = static_cast<float>(SyncTime - PreviousSyncTime);
+}
+
 
 /***********************************************************************************************
  * WW3D::Sync -- Time synchronization                                                          *

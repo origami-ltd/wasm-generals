@@ -51,6 +51,9 @@
 #endif
 
 #include "dx8wrapper.h"
+#if defined(SAGE_USE_WEBGPU)
+#include "WebGPUDevice/WebGPUD3D8.h"
+#endif
 // GeneralsX @build BenderAI 10/02/2026 - Need LoadLibrary/GetProcAddress/FreeLibrary for dynamic loading
 #include "module_compat.h"
 // GeneralsX @build felipebraz 16/02/2026 - Need dlerror() for dlopen() error reporting on Linux
@@ -579,6 +582,14 @@ bool DX8Wrapper::Init(void * hwnd, bool lite)
 	Invalidate_Cached_Render_States();
 
 	if (!lite) {
+		#if defined(SAGE_USE_WEBGPU)
+		// GeneralsX @feature Codex 04/08/2026 Use the browser-native WebGPU D3D8 implementation.
+		D3DInterface = CreateWebGPUDirect3D8();
+		if (!D3DInterface) {
+			fprintf(stderr, "ERROR: DX8Wrapper::Init() - WebGPU D3D8 initialization failed\n");
+			return false;
+		}
+		#else
 		// GeneralsX @build BenderAI 10/02/2026 - Platform-specific DLL/SO/DYLIB loading (Phase 5: macOS)
 #ifdef _WIN32
 		D3D8Lib = LoadLibrary("D3D8.DLL");
@@ -630,6 +641,7 @@ bool DX8Wrapper::Init(void * hwnd, bool lite)
 			fprintf(stderr, "ERROR: DX8Wrapper::Init() - Direct3DCreate8 returned NULL (DXVK failed to create D3D8 interface)\n");
 			return(false);
 		}
+		#endif
 		IsInitted = true;
 
 		/*

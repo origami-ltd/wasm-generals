@@ -26,6 +26,7 @@
 
 #include "GameNetwork/IPEnumeration.h"
 #include "GameNetwork/networkutil.h"
+#include "GameNetwork/udp.h"
 #include "GameClient/ClientInstance.h"
 
 #ifndef _WIN32
@@ -62,6 +63,17 @@ EnumeratedIP * IPEnumeration::getAddresses()
 {
 	if (m_IPlist)
 		return m_IPlist;
+
+#if defined(__EMSCRIPTEN__)
+	// GeneralsX @feature Codex 04/08/2026 Give each browser client one relay-routable LAN address.
+	const UnsignedInt webIP = GetWebLanVirtualIP();
+	addNewIP(
+		(UnsignedByte)((webIP >> 24) & 0xFF),
+		(UnsignedByte)((webIP >> 16) & 0xFF),
+		(UnsignedByte)((webIP >> 8) & 0xFF),
+		(UnsignedByte)(webIP & 0xFF));
+	return m_IPlist;
+#endif
 
 	if (!m_isWinsockInitialized)
 	{
@@ -287,5 +299,3 @@ AsciiString IPEnumeration::getMachineName()
 
 	return AsciiString(hostname);
 }
-
-

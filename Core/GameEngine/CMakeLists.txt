@@ -540,6 +540,7 @@ set(GAMEENGINE_SRC
     Include/GameNetwork/LANAPICallbacks.h
     Include/GameNetwork/LANGameInfo.h
     Include/GameNetwork/LANPlayer.h
+    Include/GameNetwork/LobbyTooltips.h
     Include/GameNetwork/NAT.h
     Include/GameNetwork/NetCommandList.h
     Include/GameNetwork/NetCommandMsg.h
@@ -1132,6 +1133,7 @@ set(GAMEENGINE_SRC
     Source/GameNetwork/LANAPICallbacks.cpp
     Source/GameNetwork/LANAPIhandlers.cpp
     Source/GameNetwork/LANGameInfo.cpp
+    Source/GameNetwork/LobbyTooltips.cpp
     Source/GameNetwork/NAT.cpp
     Source/GameNetwork/NetCommandList.cpp
     Source/GameNetwork/NetCommandMsg.cpp
@@ -1167,6 +1169,17 @@ else()
     )
 endif()
 
+if(NOT SAGE_USE_GAMESPY)
+    # GeneralsX @build Codex 04/08/2026 Exclude online-only units when the browser transport contract disables GameSpy.
+    list(FILTER GAMEENGINE_SRC EXCLUDE REGEX "GameNetwork/GameSpy")
+    list(REMOVE_ITEM GAMEENGINE_SRC
+        Source/GameNetwork/FirewallHelper.cpp
+        Source/GameNetwork/NAT.cpp
+    )
+    # GeneralsX @refactor Codex 04/08/2026 Keep UTF-8 conversion used by LAN serialization independent of GameSpy runtime.
+    list(APPEND GAMEENGINE_SRC Source/GameNetwork/GameSpy/Thread/ThreadUtils.cpp)
+endif()
+
 
 add_library(corei_gameengine_private INTERFACE)
 add_library(corei_gameengine_public INTERFACE)
@@ -1180,6 +1193,11 @@ target_include_directories(corei_gameengine_private INTERFACE
 target_link_libraries(corei_gameengine_private INTERFACE
     corei_always
 )
+
+if(SAGE_USE_SDL3 AND RTS_BUILD_OPTION_DEEP_CRC)
+    # GeneralsX @build Codex 04/08/2026 Deep CRC diagnostics query SDL platform data in both game variants.
+    target_link_libraries(corei_gameengine_private INTERFACE sdl3lib)
+endif()
 
 target_compile_definitions(corei_gameengine_private INTERFACE
     IG_DEBUG_STACKTRACE

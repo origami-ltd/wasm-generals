@@ -169,11 +169,13 @@ Bool TransitionWindow::init()
 	m_winID = TheNameKeyGenerator->nameToKey(m_winName);
 	m_win		= TheWindowManager->winGetWindowFromId(nullptr, m_winID);
 	m_currentFrameDelay = m_frameDelay;
-//	DEBUG_ASSERTCRASH( m_win, ("TransitionWindow::init Failed to find window %s", m_winName.str()));
-//	if( !m_win )
-//		return FALSE;
-
 	delete m_transition;
+	m_transition = nullptr;
+//	DEBUG_ASSERTCRASH( m_win, ("TransitionWindow::init Failed to find window %s", m_winName.str()));
+	// GeneralsX @bugfix Codex 04/08/2026 Treat absent optional windows as completed transitions instead of blocking menu shutdown forever.
+	if( !m_win )
+		return FALSE;
+
 	m_transition = getTransitionForStyle( m_style );
 	m_transition->init(m_win);
 
@@ -186,11 +188,13 @@ Bool TransitionWindow::init()
 
 void TransitionWindow::update( Int frame )
 {
+	if( !m_transition )
+		return;
+
 	if(frame < m_currentFrameDelay || frame > (m_currentFrameDelay + m_transition->getFrameLength()))
 		return;
 
-	if(m_transition)
-		m_transition->update( frame - m_currentFrameDelay);
+	m_transition->update( frame - m_currentFrameDelay);
 }
 
 Bool TransitionWindow::isFinished()
@@ -606,4 +610,3 @@ void GameWindowTransitionsHandler::parseWindow( INI* ini, void *instance, void *
 	ini->initFromINI(transWin, myFieldParse);
 	((TransitionGroup*)instance)->addWindow(transWin);
 }
-

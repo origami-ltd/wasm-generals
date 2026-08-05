@@ -169,6 +169,7 @@ public:
 	// TheSuperHackers @info Add amount of milliseconds that the simulation has advanced in this render frame.
 	// This can be a fraction of a logic step.
 	static void Update_Logic_Frame_Time(float milliseconds);
+	static void Set_Logic_Time_Milliseconds(unsigned int milliseconds);
 	/*
 	** Timing
 	** By calling the Sync function, the application can move the ww3d library time forward.  This

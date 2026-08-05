@@ -49,6 +49,7 @@
 
 #ifndef USE_FLAT_HEIGHT_MAP // Flat height map uses flattened textures. jba. [3/20/2003]
 
+#include <algorithm>
 #include <stdlib.h>
 #include <WW3D2/assetmgr.h>
 #include <WW3D2/texture.h>
@@ -59,6 +60,7 @@
 #include <WW3D2/camera.h>
 #include <d3dx8core.h>
 #include "Common/GlobalData.h"
+#include "Common/CommandLine.h"
 #include "Common/PerfTimer.h"
 
 #include "GameClient/TerrainVisual.h"
@@ -66,6 +68,7 @@
 #include "GameClient/Water.h"
 
 #include "GameLogic/AIPathfind.h"
+#include "GameLogic/GameLogic.h"
 #include "GameLogic/TerrainLogic.h"
 #include "W3DDevice/GameClient/TerrainTex.h"
 #include "W3DDevice/GameClient/W3DDynamicLight.h"
@@ -1772,6 +1775,16 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera, const Vector3 *c
 		newOrgY = WWMath::Round((cameraPivot->Y + shiftPivot.Y)/MAP_XY_FACTOR) - m_y/2 + m_map->getBorderSizeInline();
 	}
 
+	const Bool forceReferenceCenter = TheGameLogic && TheCommandLinePauseFrame != 0
+		&& TheGameLogic->getFrame() == TheCommandLinePauseFrame;
+	if (forceReferenceCenter) {
+		if (IABS(newOrgX - m_map->getDrawOrgX()) == 1) {
+			newOrgX = std::max(newOrgX, m_map->getDrawOrgX());
+		}
+		if (IABS(newOrgY - m_map->getDrawOrgY()) == 1) {
+			newOrgY = std::max(newOrgY, m_map->getDrawOrgY());
+		}
+	}
 	WorldHeightMap::DrawArea newDrawArea = m_map->createDrawArea(newOrgX, newOrgY);
 
 	if (m_needFullUpdate)
@@ -1787,7 +1800,6 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera, const Vector3 *c
 		constexpr const Int cellOffset = 1;
 		const Int deltaX = newDrawArea.originX - m_map->getDrawOrgX();
 		const Int deltaY = newDrawArea.originY - m_map->getDrawOrgY();
-
 		if (IABS(deltaX) > m_x/2 || IABS(deltaY)>m_x/2) {
 			if (m_map->setDrawArea(newDrawArea)) {
 				m_originY = 0;
@@ -1798,7 +1810,7 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera, const Vector3 *c
 			return;
 		}
 
-		if (abs(deltaY) > CENTER_LIMIT) {
+		if (abs(deltaY) > CENTER_LIMIT || (forceReferenceCenter && deltaY != 0)) {
 			if (m_map->setDrawOrg(m_map->getDrawOrgX(), newOrgY)) {
 				Int minY = 0;
 				Int maxY = 0;
@@ -1825,13 +1837,13 @@ void HeightMapRenderObjClass::updateCenter(CameraClass *camera, const Vector3 *c
 			// It is much more efficient to update a couple of columns one frame, and then
 			// a couple of rows.  So if we aren't "jumping" to a new view, and have done X
 			// recently, return.
-			if (abs(deltaX) < BIG_JUMP && !m_doXNextTime) {
+			if (abs(deltaX) < BIG_JUMP && !m_doXNextTime && !forceReferenceCenter) {
 				m_updating = false;
 				m_doXNextTime = true;
 				return;	// Only do the y this frame.  Do x next frame.  jba.
 			}
 		}
-		if (abs(deltaX) > CENTER_LIMIT) {
+		if (abs(deltaX) > CENTER_LIMIT || (forceReferenceCenter && deltaX != 0)) {
 			m_doXNextTime = false;
 			newOrgX = m_map->getDrawOrgX() + deltaX;
 			if (m_map->setDrawOrg(newOrgX, m_map->getDrawOrgY())) {
@@ -2015,7 +2027,7 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
 	}
 
 	Int pass;
- 	for (pass=0; pass<devicePasses; pass++) {
+	for (pass=0; pass<devicePasses; pass++) {
 #ifdef TIMING_TESTS
 #endif
 		if (!doMultiPassWireFrame)	//multi-pass wireframe doesn't use regular shaders.
@@ -2023,11 +2035,10 @@ void HeightMapRenderObjClass::Render(RenderInfoClass & rinfo)
  			if (m_disableTextures ) {
  				DX8Wrapper::Set_Shader(ShaderClass::_PresetOpaque2DShader);
  				DX8Wrapper::Set_Texture(0,nullptr);
-   			} else {
- 				W3DShaderManager::setShader(st, pass);
+			} else {
+				W3DShaderManager::setShader(st, pass);
 			}
 		}
-
 		for (j=0; j<m_numVBTilesY; j++)
 			for (i=0; i<m_numVBTilesX; i++)
 			{

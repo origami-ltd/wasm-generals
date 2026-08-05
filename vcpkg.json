@@ -11,19 +11,22 @@
       },
       {
         "name": "fontconfig",
-        "platform": "!windows"
+        "platform": "!(windows | emscripten)"
       },
       {
         "name": "openal-soft",
-        "platform": "!windows",
+        "platform": "!(windows | emscripten)",
         "features": []
       },
       {
         "name": "curl",
-        "platform": "!windows",
+        "platform": "!(windows | emscripten)",
         "features": ["ssl"]
       },
-      "ffmpeg",
+      {
+        "name": "ffmpeg",
+        "platform": "!emscripten"
+      },
       "stb"
     ]
   }

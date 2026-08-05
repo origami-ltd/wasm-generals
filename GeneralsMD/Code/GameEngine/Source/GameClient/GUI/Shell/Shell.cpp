@@ -30,6 +30,7 @@
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
+#include "Common/CommandLine.h"
 #include "Common/RandomValue.h"
 #include "GameClient/Shell.h"
 #include "GameClient/WindowLayout.h"
@@ -326,8 +327,10 @@ void Shell::push( AsciiString filename, Bool shutdownImmediate )
 	// sanity
 	if( filename.isEmpty() )
 		return;
-	if(TheGameSpyInfo)
-			GameSpyCloseAllOverlays();
+#if defined(SAGE_USE_GAMESPY)
+	if (TheGameSpyInfo)
+		GameSpyCloseAllOverlays();
+#endif
 
 
 #ifdef DEBUG_LOGGING
@@ -393,8 +396,10 @@ void Shell::push( AsciiString filename, Bool shutdownImmediate )
 void Shell::pop()
 {
 	WindowLayout *screen = top();
-	if(TheGameSpyInfo)
-			GameSpyCloseAllOverlays();
+#if defined(SAGE_USE_GAMESPY)
+	if (TheGameSpyInfo)
+		GameSpyCloseAllOverlays();
+#endif
 
 
 	// sanity
@@ -473,8 +478,12 @@ void Shell::showShell( Bool runInit )
 {
 	DEBUG_LOG(("Shell:showShell() - %s (%s)", TheGlobalData->m_initialFile.str(), (top())?top()->getFilename().str():"no top screen"));
 
-	if(!TheGlobalData->m_initialFile.isEmpty() || !TheGlobalData->m_simulateReplays.empty())
+	if(!TheGlobalData->m_initialFile.isEmpty() || TheCommandLineLoadStateFile[0] != '\0' ||
+		TheCommandLineBotMatchMap[0] != '\0' ||
+		!TheGlobalData->m_simulateReplays.empty())
 	{
+		TheWritableGlobalData->m_breakTheMovie = FALSE;
+		m_isShellActive = FALSE;
 		return;
 	}
 
@@ -521,7 +530,7 @@ void Shell::showShell( Bool runInit )
 	//	}
 
 
-	if (!TheGlobalData->m_shellMapOn && m_screenCount == 0)
+	if (!TheGlobalData->m_shellMapOn && m_screenCount == 0 && TheCommandLineBotMatchMap[0] == '\0')
   {
 #ifdef RTS_PROFILE_LEGACY
     Profile::StopRange("init");
@@ -535,7 +544,9 @@ void Shell::showShell( Bool runInit )
 void Shell::showShellMap(Bool useShellMap )
 {
 	// we don't want any of this to show if we're loading straight into a file
-	if (TheGlobalData->m_initialFile.isNotEmpty() || !TheGameLogic || !TheGlobalData->m_simulateReplays.empty())
+	if (TheGlobalData->m_initialFile.isNotEmpty() || TheCommandLineLoadStateFile[0] != '\0' ||
+		TheCommandLineBotMatchMap[0] != '\0' ||
+		!TheGameLogic || !TheGlobalData->m_simulateReplays.empty())
 	{
 		return;
 	}
@@ -684,8 +695,10 @@ void Shell::doPush( AsciiString layoutFile )
 	fprintf(stderr, "DEBUG: Shell::doPush() called with layoutFile='%s'\n", layoutFile.str());
 	fflush(stderr);
 
-	if(TheGameSpyInfo)
-			GameSpyCloseAllOverlays();
+#if defined(SAGE_USE_GAMESPY)
+	if (TheGameSpyInfo)
+		GameSpyCloseAllOverlays();
+#endif
 	WindowLayout *newScreen;
 
 	// create new layout and load from window manager

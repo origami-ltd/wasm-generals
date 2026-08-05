@@ -3,9 +3,8 @@
 
 #include "d3dx8core.h"
 
-// GeneralsX @build felipebraz 20/06/2025 GLI causes make_vec4 ambiguity with Apple Clang (GLM version mismatch).
-// On macOS, exclude GLI and use stub implementations for the surface scaling path.
-#ifndef __APPLE__
+// GLI causes make_vec4 ambiguity with Apple Clang and produces different mip bytes than the native box filter.
+#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
 #include <gli/gli.hpp>
 #include <gli/generate_mipmaps.hpp>
 #endif
@@ -106,7 +105,7 @@ D3DXLoadSurfaceFromSurface(
 		return D3D_OK;
 	}
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) && !defined(__EMSCRIPTEN__)
 	// GeneralsX @bugfix Antigravity 26/06/2026 Linux: GLI lacks support for A4R4G4B4/R5G6B5 formats.
 	// We use manual box filter downsampling for these formats to fix black infantry rendering.
 	if (descDest.Width == descSrc.Width / 2 && descDest.Height == descSrc.Height / 2)
@@ -224,9 +223,7 @@ D3DXLoadSurfaceFromSurface(
 
 	return D3D_OK;
 #else
-	// GeneralsX @bugfix BenderAI 07/03/2026 macOS: GLI not available due to Apple Clang ambiguity.
-	// Implement manual box filter downsampling for mipmap generation.
-	// This is critical for terrain textures - without mipmaps, terrain renders black.
+	// Use one deterministic box filter for native macOS and WebAssembly reference parity.
 	if (descDest.Width == descSrc.Width / 2 && descDest.Height == descSrc.Height / 2)
 	{
 		if (descSrc.Format == D3DFMT_A1R5G5B5)
@@ -429,11 +426,13 @@ D3DXFilterTexture(
 
 			while (tex->GetSurfaceLevel(Level, &mipsurf) == D3D_OK)
 			{
-				// Copy the data
-				D3DXLoadSurfaceFromSurface(mipsurf, NULL, NULL, topsurf, NULL, NULL, Filter, 0);
-
-				// Release the surface
-				mipsurf->Release();
+				hr = D3DXLoadSurfaceFromSurface(mipsurf, NULL, NULL, topsurf, NULL, NULL, Filter, 0);
+				topsurf->Release();
+				if (FAILED(hr))
+				{
+					mipsurf->Release();
+					return hr;
+				}
 				topsurf = mipsurf;
 
 				Level++;

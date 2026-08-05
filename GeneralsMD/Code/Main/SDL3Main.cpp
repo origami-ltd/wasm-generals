@@ -241,9 +241,18 @@ int main(int argc, char* argv[])
 	__argc = argc;
 	__argv = argv;
 
+	#if defined(SAGE_USE_WEBGPU)
+	setenv("CNC_GENERALS_ZH_PATH", "/GeneralsZH", 1);
+	setenv("CNC_GENERALS_PATH", "/Generals", 1);
+	#endif
+
 	fprintf(stderr, "=================================================\n");
 	fprintf(stderr, " Command & Conquer Generals: Zero Hour (Linux)\n");
+	#if defined(SAGE_USE_WEBGPU)
+	fprintf(stderr, " SDL3 + WebAssembly + WebGPU Build\n");
+	#else
 	fprintf(stderr, " SDL3 + DXVK Build\n");
+	#endif
 	fprintf(stderr, "=================================================\n\n");
 
 	try {
@@ -284,6 +293,7 @@ int main(int argc, char* argv[])
 			return 1;
 		}
 
+		#if !defined(SAGE_USE_WEBGPU)
 		// Set DXVK WSI driver before loading Vulkan
 		setenv("DXVK_WSI_DRIVER", "SDL3", 1);
 
@@ -299,10 +309,17 @@ int main(int argc, char* argv[])
 			fprintf(stderr, "WARNING: Failed to load Vulkan: %s\n", SDL_GetError());
 			fprintf(stderr, "WARNING: Continuing without Vulkan (may use software rendering)\n");
 		}
+		#endif
 
+		#if defined(SAGE_USE_WEBGPU)
+		// GeneralsX @feature Codex 04/08/2026 Bind SDL input and sizing to Emscripten's browser canvas.
+		fprintf(stderr, "INFO: Creating SDL3 browser canvas window...\n");
+		Uint32 windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
+		#else
 		// Create SDL3 window with Vulkan support
 		fprintf(stderr, "INFO: Creating SDL3 Vulkan window...\n");
 		Uint32 windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;  // Start hidden, show after D3D init
+		#endif
 #ifdef __APPLE__
 		// GeneralsX @bugfix macOS HiDPI: request a native-resolution (Retina) Metal drawable so the
 		// DXVK swapchain renders at physical pixels instead of being upscaled by the compositor.

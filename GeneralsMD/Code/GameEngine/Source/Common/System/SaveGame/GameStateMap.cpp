@@ -35,6 +35,7 @@
 #include "Common/GameState.h"
 #include "Common/GameStateMap.h"
 #include "Common/GlobalData.h"
+#include "Common/Recorder.h"
 #include "Common/Xfer.h"
 #include "GameClient/CampaignManager.h"
 #include "GameClient/GameClient.h"
@@ -419,16 +420,36 @@ void GameStateMap::xfer( Xfer *xfer )
 	TheGameClient->setDrawableIDCounter( highDrawableID );
 
 	// Save the Game Info so the game can be started with the correct players on load
-	if( TheGameLogic->getGameMode()==GAME_SKIRMISH )
+	if( TheGameLogic->getGameMode()==GAME_SKIRMISH || TheGameLogic->getGameMode()==GAME_REPLAY )
 	{
-		if( TheSkirmishGameInfo==nullptr )
+		if (xfer->getXferMode() == XFER_SAVE && TheRecorder->isPlaybackMode())
 		{
-			TheSkirmishGameInfo = NEW SkirmishGameInfo;
-			TheSkirmishGameInfo->init();
-			TheSkirmishGameInfo->clearSlotList();
-			TheSkirmishGameInfo->reset();
+			SkirmishGameInfo replayGameInfo;
+			replayGameInfo.init();
+			replayGameInfo.clearSlotList();
+			replayGameInfo.reset();
+			GameInfo *sourceGameInfo = TheRecorder->getGameInfo();
+			if (!ParseAsciiStringToGameInfo(&replayGameInfo, GameInfoToAsciiString(sourceGameInfo)))
+				throw SC_INVALID_DATA;
+			const Int localSlot = sourceGameInfo->getLocalSlotNum();
+			if (localSlot < 0)
+				throw SC_INVALID_DATA;
+			replayGameInfo.setLocalIP(sourceGameInfo->getConstSlot(localSlot)->getIP());
+			replayGameInfo.setInGame();
+			replayGameInfo.setGameInProgress(sourceGameInfo->isGameInProgress());
+			xfer->xferSnapshot(&replayGameInfo);
 		}
-		xfer->xferSnapshot(TheSkirmishGameInfo);
+		else
+		{
+			if( TheSkirmishGameInfo==nullptr )
+			{
+				TheSkirmishGameInfo = NEW SkirmishGameInfo;
+				TheSkirmishGameInfo->init();
+				TheSkirmishGameInfo->clearSlotList();
+				TheSkirmishGameInfo->reset();
+			}
+			xfer->xferSnapshot(TheSkirmishGameInfo);
+		}
 	}
 	else
 	{

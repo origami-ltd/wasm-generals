@@ -711,6 +711,12 @@ void GameEngine::reset()
 
 	WindowLayout *background = TheWindowManager->winCreateLayout("Menus/BlankWindow.wnd");
 	DEBUG_ASSERTCRASH(background,("We Couldn't Load Menus/BlankWindow.wnd"));
+	if (background == nullptr)
+	{
+		// GeneralsX @bugfix Codex 04/08/2026 Fail closed when the required reset layout is unavailable in release builds.
+		RELEASE_CRASH("Missing required layout: Menus/BlankWindow.wnd");
+		return;
+	}
 	background->hide(FALSE);
 	background->bringForward();
 	background->getFirstWindow()->winClearStatus(WIN_STATUS_IMAGE);

@@ -25,6 +25,8 @@
 
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
 
+#include <climits>
+
 #ifndef _WIN32
 	#include "file_compat.h"
 	#define _S_IFDIR S_IFDIR
@@ -46,6 +48,21 @@
 
 
 Bool TheDebugIgnoreSyncErrors = FALSE;
+unsigned int TheCommandLinePauseFrame = 0;
+unsigned int TheCommandLineCaptureFrameDelay = 1;
+unsigned int TheCommandLineCaptureFrameCount = 1;
+unsigned int TheCommandLineSaveStateFrame = 0;
+char TheCommandLineLoadStateFile[256] = {};
+const char TheCommandLineSaveStateFile[] = "GeneralsXParity.sav";
+float TheCommandLineMaxCameraHeight = 0.0f;
+float TheCommandLineMinCameraHeight = 0.0f;
+char TheCommandLineBotMatchMap[256] = {};
+char TheCommandLineBotMatchFaction[64] = {};
+unsigned int TheCommandLineBotMatchSeed = 0;
+unsigned int TheCommandLineBotMatchMaxFrames = 0;
+unsigned int TheCommandLineBotMatchSpeed = 1;
+unsigned int TheCommandLineReplaySpeed = 1;
+unsigned int TheCommandLineReplayCheckpointInterval = 0;
 extern Int DX8Wrapper_PreserveFPU;
 
 #ifdef DEBUG_CRC
@@ -448,6 +465,206 @@ Int parseReplay(char *args[], int num)
 		rts::ClientInstance::setMultiInstance(TRUE);
 		rts::ClientInstance::skipPrimaryInstance();
 
+		return 2;
+	}
+	return 1;
+}
+
+Int parsePauseFrame(char *args[], int num)
+{
+	if (num > 1)
+	{
+		const Int frame = atoi(args[1]);
+		if (frame <= 0)
+		{
+			printf("Invalid pause frame: %s\n", args[1]);
+			exit(1);
+		}
+		TheCommandLinePauseFrame = static_cast<unsigned int>(frame);
+		return 2;
+	}
+	return 1;
+}
+
+Int parseReplaySpeed(char *args[], int num)
+{
+	if (num > 1)
+	{
+		const Int speed = atoi(args[1]);
+		if (speed < 1 || speed > 10)
+		{
+			printf("Invalid replay speed: %s\n", args[1]);
+			exit(1);
+		}
+		TheCommandLineReplaySpeed = static_cast<unsigned int>(speed);
+		return 2;
+	}
+	return 1;
+}
+
+Int parseReplayCheckpointInterval(char *args[], int num)
+{
+	if (num > 1)
+	{
+		char *end = nullptr;
+		const unsigned long interval = strtoul(args[1], &end, 10);
+		if (*args[1] == '\0' || *end != '\0' || interval == 0 || interval > UINT_MAX)
+		{
+			printf("Invalid replay checkpoint interval: %s\n", args[1]);
+			exit(1);
+		}
+		TheCommandLineReplayCheckpointInterval = static_cast<unsigned int>(interval);
+		return 2;
+	}
+	return 1;
+}
+
+Int parseBotMatch(char *args[], int num)
+{
+	if (num < 6)
+	{
+		printf("Usage: -botmatch <map> <faction> <seed> <max-frames> <speed>\n");
+		exit(1);
+	}
+
+	const AsciiString map = args[1];
+	const AsciiString faction = args[2];
+	char *end = nullptr;
+	const unsigned long seed = strtoul(args[3], &end, 10);
+	if (*args[3] == '\0' || *end != '\0' || seed == 0 || seed > UINT_MAX)
+	{
+		printf("Invalid bot-match seed: %s\n", args[3]);
+		exit(1);
+	}
+	const unsigned long maxFrames = strtoul(args[4], &end, 10);
+	if (*args[4] == '\0' || *end != '\0' || maxFrames == 0 || maxFrames > UINT_MAX)
+	{
+		printf("Invalid bot-match max frames: %s\n", args[4]);
+		exit(1);
+	}
+	const unsigned long speed = strtoul(args[5], &end, 10);
+	if (*args[5] == '\0' || *end != '\0' || speed < 1 || speed > 10)
+	{
+		printf("Invalid bot-match speed: %s\n", args[5]);
+		exit(1);
+	}
+	if (map.isEmpty() || map.getLength() >= static_cast<Int>(sizeof(TheCommandLineBotMatchMap)) ||
+		strstr(map.str(), "..") != nullptr || faction.isEmpty() ||
+		faction.getLength() >= static_cast<Int>(sizeof(TheCommandLineBotMatchFaction)))
+	{
+		printf("Invalid bot-match map or faction.\n");
+		exit(1);
+	}
+
+	snprintf(TheCommandLineBotMatchMap, sizeof(TheCommandLineBotMatchMap), "%s", map.str());
+	snprintf(TheCommandLineBotMatchFaction, sizeof(TheCommandLineBotMatchFaction), "%s", faction.str());
+	TheCommandLineBotMatchSeed = static_cast<unsigned int>(seed);
+	TheCommandLineBotMatchMaxFrames = static_cast<unsigned int>(maxFrames);
+	TheCommandLineBotMatchSpeed = static_cast<unsigned int>(speed);
+	TheWritableGlobalData->m_playIntro = FALSE;
+	TheWritableGlobalData->m_playSizzle = FALSE;
+	TheWritableGlobalData->m_shellMapOn = FALSE;
+	rts::ClientInstance::setMultiInstance(TRUE);
+	rts::ClientInstance::skipPrimaryInstance();
+	return 6;
+}
+
+Int parseCaptureFrameCount(char *args[], int num)
+{
+	if (num > 1)
+	{
+		const Int count = atoi(args[1]);
+		if (count <= 0)
+		{
+			printf("Invalid capture frame count: %s\n", args[1]);
+			exit(1);
+		}
+		TheCommandLineCaptureFrameCount = static_cast<unsigned int>(count);
+		return 2;
+	}
+	return 1;
+}
+
+Int parseSaveStateFrame(char *args[], int num)
+{
+	if (num > 1)
+	{
+		const Int frame = atoi(args[1]);
+		if (frame <= 0)
+		{
+			printf("Invalid save-state frame: %s\n", args[1]);
+			exit(1);
+		}
+		TheCommandLineSaveStateFrame = static_cast<unsigned int>(frame);
+		return 2;
+	}
+	return 1;
+}
+
+Int parseLoadState(char *args[], int num)
+{
+	if (num > 1)
+	{
+		AsciiString filename = args[1];
+		if (!filename.endsWithNoCase(".sav") || filename.getLength() >= static_cast<Int>(sizeof(TheCommandLineLoadStateFile)))
+		{
+			printf("Invalid save-state filename: %s\n", args[1]);
+			exit(1);
+		}
+		snprintf(TheCommandLineLoadStateFile, sizeof(TheCommandLineLoadStateFile), "%s", filename.str());
+		TheWritableGlobalData->m_playIntro = FALSE;
+		TheWritableGlobalData->m_playSizzle = FALSE;
+		TheWritableGlobalData->m_shellMapOn = FALSE;
+		rts::ClientInstance::setMultiInstance(TRUE);
+		rts::ClientInstance::skipPrimaryInstance();
+		return 2;
+	}
+	return 1;
+}
+
+Int parseMaxCameraHeight(char *args[], int num)
+{
+	if (num > 1)
+	{
+		const float height = static_cast<float>(atof(args[1]));
+		if (height <= 0.0f)
+		{
+			printf("Invalid maximum camera height: %s\n", args[1]);
+			exit(1);
+		}
+		TheCommandLineMaxCameraHeight = height;
+		return 2;
+	}
+	return 1;
+}
+
+Int parseCaptureFrameDelay(char *args[], int num)
+{
+	if (num > 1)
+	{
+		const Int delay = atoi(args[1]);
+		if (delay <= 0)
+		{
+			printf("Invalid capture frame delay: %s\n", args[1]);
+			exit(1);
+		}
+		TheCommandLineCaptureFrameDelay = static_cast<unsigned int>(delay);
+		return 2;
+	}
+	return 1;
+}
+
+Int parseMinCameraHeight(char *args[], int num)
+{
+	if (num > 1)
+	{
+		const float height = static_cast<float>(atof(args[1]));
+		if (height <= 0.0f)
+		{
+			printf("Invalid minimum camera height: %s\n", args[1]);
+			exit(1);
+		}
+		TheCommandLineMinCameraHeight = height;
 		return 2;
 	}
 	return 1;
@@ -1151,6 +1368,17 @@ static CommandLineParam paramsForStartup[] =
 	// You can pass this multiple times to play back multiple replays.
 	// You can also include wildcards. The file must be in the replay folder or in a subfolder.
 	{ "-replay", parseReplay },
+	{ "-replayspeed", parseReplaySpeed },
+	{ "-replaycheckpointinterval", parseReplayCheckpointInterval },
+	{ "-botmatch", parseBotMatch },
+	// GeneralsX @feature Codex 04/08/2026 Pause deterministic visual regression runs on one exact logic frame.
+	{ "-pauseframe", parsePauseFrame },
+	{ "-captureframedelay", parseCaptureFrameDelay },
+	{ "-captureframecount", parseCaptureFrameCount },
+	{ "-savestateframe", parseSaveStateFrame },
+	{ "-loadstate", parseLoadState },
+	{ "-maxcameraheight", parseMaxCameraHeight },
+	{ "-mincameraheight", parseMinCameraHeight },
 
 	// TheSuperHackers @feature helmutbuhler 23/05/2025
 	// Simulate each replay in a separate process and use 1..N processes at the same time.
@@ -1178,9 +1406,9 @@ static CommandLineParam paramsForEngineInit[] =
 
 	// TheSuperHackers @feature xezon 03/08/2025 Force full viewport for 'Control Bar Pro' Addons like GenTool did it.
 	{ "-forcefullviewport", parseFullViewport },
+	{ "-noaudio", parseNoAudio },
 
 #if defined(RTS_DEBUG)
-	{ "-noaudio", parseNoAudio },
 	{ "-map", parseMapName },
 	{ "-nomusic", parseNoMusic },
 	{ "-novideo", parseNoVideo },

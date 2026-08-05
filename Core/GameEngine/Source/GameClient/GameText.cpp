@@ -1390,10 +1390,18 @@ UnicodeString GameTextManager::fetch( const Char *label, Bool *exists )
 		lookUp = (StringLookUp *) bsearch( &key, (void*) m_mapStringLUT, m_mapTextCount, sizeof(StringLookUp), compareLUT );
 	}
 
-	// GeneralsX @bugfix BenderAI 22/05/2026 Fallback to lower-priority CSF when override tables are incomplete.
-	if ( lookUp == nullptr && m_fallbackStringLUT && m_fallbackTextCount )
+	// GeneralsX @bugfix BenderAI 22/05/2026 Fallback to lower-priority CSF when override tables are incomplete or empty.
+	if ( (lookUp == nullptr || lookUp->info->text.isEmpty()) && m_fallbackStringLUT && m_fallbackTextCount )
 	{
-		lookUp = (StringLookUp *) bsearch( &key, (void*) m_fallbackStringLUT, m_fallbackTextCount, sizeof(StringLookUp), compareLUT );
+		StringLookUp *fallback = (StringLookUp *) bsearch( &key, (void*) m_fallbackStringLUT, m_fallbackTextCount, sizeof(StringLookUp), compareLUT );
+		if ( fallback && !fallback->info->text.isEmpty() )
+			lookUp = fallback;
+	}
+	if ( lookUp && lookUp->info->text.isEmpty() )
+	{
+		// GeneralsX @debug Codex 04/08/2026 Report empty labels unresolved by lower-priority archives.
+		fprintf(stderr, "[CSF] Empty label '%s'; fallback labels=%d\n", label, m_fallbackTextCount);
+		fflush(stderr);
 	}
 
 	if( lookUp == nullptr )
@@ -1404,8 +1412,11 @@ UnicodeString GameTextManager::fetch( const Char *label, Bool *exists )
 			*exists = FALSE;
 
 		// See if we already have the missing string
+		// GeneralsX @port Codex 04/08/2026 Avoid unsupported wide %hs formatting in Emscripten libc.
+		AsciiString missingLabel;
+		missingLabel.format("MISSING: '%s'", label);
 		UnicodeString missingString;
-		missingString.format(L"MISSING: '%hs'", label);
+		missingString.translate(missingLabel);
 
 		NoString *noString = m_noStringList;
 

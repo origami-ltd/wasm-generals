@@ -1545,6 +1545,8 @@ void GameState::xferSaveData( Xfer *xfer, SnapshotType which )
 				}
 				catch( ... )
 				{
+					fprintf(stderr, "[GeneralsX] SAVE_STATE_BLOCK_FAILED block=%s file=%s\n",
+						blockInfo->blockName.str(), xfer->getIdentifier().str());
 
 					DEBUG_CRASH(( "Error loading block '%s' in file '%s'",
 												blockInfo->blockName.str(), xfer->getIdentifier().str() ));

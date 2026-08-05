@@ -1122,4 +1122,3 @@ WWProfileHierarchyInfoClass::~WWProfileHierarchyInfoClass()
 	delete Child;
 	delete Sibling;
 }
-

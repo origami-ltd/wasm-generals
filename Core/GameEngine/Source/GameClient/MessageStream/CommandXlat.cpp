@@ -4130,8 +4130,10 @@ GameMessageDisposition CommandTranslator::translateGameMessage(const GameMessage
 			{
 				ToggleDiplomacy( FALSE );
 			}
-			else if( TheShell && TheShell->isShellActive() && TheGameSpyBuddyMessageQueue)
+			#if defined(SAGE_USE_GAMESPY)
+			else if (TheShell && TheShell->isShellActive() && TheGameSpyBuddyMessageQueue)
 				GameSpyToggleOverlay(GSOVERLAY_BUDDY);
+			#endif
 			disp = DESTROY_MESSAGE;
 			break;
 

@@ -48,6 +48,7 @@
 #include "Common/ThingFactory.h"
 #include "Common/ThingTemplate.h"
 #include "Common/BuildAssistant.h"
+#include "Common/CommandLine.h"
 #include "Common/Recorder.h"
 #include "Common/SpecialPower.h"
 
@@ -3751,12 +3752,12 @@ void InGameUI::postWindowDraw()
 		drawNetworkLatency(hudOffsetX, hudOffsetY);
 	}
 
-	if (m_renderFpsPointSize > 0)
+	if (TheCommandLinePauseFrame == 0 && m_renderFpsPointSize > 0)
 	{
 		drawRenderFps(hudOffsetX, hudOffsetY);
 	}
 
-	if (m_systemTimePointSize > 0)
+	if (TheCommandLinePauseFrame == 0 && m_systemTimePointSize > 0)
 	{
 		drawSystemTime(hudOffsetX, hudOffsetY);
 	}

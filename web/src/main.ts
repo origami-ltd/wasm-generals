@@ -80,7 +80,11 @@ el("reset").addEventListener("click", () => {
 
 /* ------------------------------------------------------------ first-run gate */
 el("firstrun-steam").addEventListener("click", () => {
-  location.href = "/GeneralsXSteamLogin";
+  // Popup, not a redirect: a full navigation would throw away the loaded runtime.
+  open("/GeneralsXSteamLogin", "gx-steam", "width=820,height=720");
+  addEventListener("message", (event) => {
+    if (event.data === "gx-steam-done") location.reload();
+  }, { once: true });
 });
 el("firstrun-info").addEventListener("click", () => {
   const panel = el("firstrun-info-panel");

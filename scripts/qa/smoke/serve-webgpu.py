@@ -283,7 +283,12 @@ document.getElementById("log").textContent =
                 valid = False
             claimed = params.get("openid.claimed_id", "")
             steamid = claimed.rsplit("/", 1)[-1] if valid and claimed.rsplit("/", 1)[-1].isdigit() else None
-            self.send_response(302)
+            # Popup flow: the window closes itself and tells the opener to re-check the session.
+            body = (b"<!doctype html><meta charset=utf-8><title>Steam</title>"
+                    b"<body style='background:#04080c;color:#7fe7ff;font:14px monospace;padding:24px'>"
+                    b"Signed in. You can close this window."
+                    b"<script>opener&&opener.postMessage('gx-steam-done','*');close()</script>")
+            self.send_response(200)
             if steamid:
                 owns, reason = steam_check_ownership(steamid)
                 name = steam_player_name(steamid)
@@ -292,9 +297,10 @@ document.getElementById("log").textContent =
                                  f"gxsteam={cookie}; Path=/; Max-Age={STEAM_SESSION_SECONDS}; Secure; HttpOnly; SameSite=Lax")
                 if not owns:
                     print(f"Steam login {steamid}: ownership denied ({reason})")
-            self.send_header("Location", "/GeneralsXZH.html")
-            self.send_header("Content-Length", "0")
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
             self.end_headers()
+            self.wfile.write(body)
             return
         if path == "/GeneralsXAssets":
             self.send_asset_manifest()

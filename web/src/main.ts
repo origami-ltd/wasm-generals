@@ -296,15 +296,17 @@ for (const event of ["pointerdown", "keydown", "visibilitychange"]) {
 /** Two phases, because the files are always local or on the LAN: pull the whole game in, but pull
     what the menu needs first so Play is not held for gigabytes.
     Menu: INI, window/UI art, English strings, music. Match: everything else. */
-const MENU_ARCHIVES = /^(ini|window|english|music|gensec|patch)/i;
+const MENU_ARCHIVES = /^(ini|window|english|gensec|patch|audio|music|speech)/i;
 
-function preloadEverything(entries: { name: string; size: number }[]): void {
+function preloadEverything(entries: { name: string; size: number }[]): Promise<void> {
+  // Audio is cheap and every miss is audible, so the whole sound set is pulled into memory up front
+  // along with the menu. Textures and models stream — a late texture is a blank frame, not a glitch.
   const menu = entries.filter((entry) => MENU_ARCHIVES.test(entry.name));
   const match = entries.filter((entry) => !MENU_ARCHIVES.test(entry.name));
   const total = entries.reduce((sum, entry) => sum + entry.size, 0);
   // Menu assets go into memory (small, needed immediately); the rest is primed into the browser's
   // disk cache so the whole game is local without holding gigabytes in the tab.
-  void streamer
+  return streamer
     .warm(menu as never, Number.MAX_SAFE_INTEGER, (done, name) =>
       report("", `Caching menu · ${name} · ${(done / 2 ** 20).toFixed(0)} MB`))
     .then(() => streamer.prime(match as never, (done, name) =>
@@ -480,11 +482,11 @@ await preload("/GeneralsXZH.data", "startup files");
 const manifest = await loadManifest().catch(() => null);
 if (manifest && !manifest.missing) {
   lastManifest = manifest.entries;
-  preloadEverything(manifest.entries);
+  await preloadEverything(manifest.entries);
 }
 
 play.hidden = false;
-report("Ready", "click Play to start");
+report("Ready", "everything downloaded — click Play to start audio");
 play.addEventListener("click", () => {
   play.hidden = true;
   report("Starting engine", "loading game data");

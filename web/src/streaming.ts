@@ -12,7 +12,7 @@ import type { EmscriptenFS, EmscriptenModule } from "./types";
 // 4 MiB chunks meant a 1 KiB read cost 4 MiB and only 48 blocks fitted the cache, so a map load
 // thrashed and pulled ~35 GB over ~9000 requests. Smaller blocks, far more of them cached.
 const CHUNK_SIZE = 256 * 1024;
-const CACHE_LIMIT = 320 * 1024 * 1024; // small in-memory LRU: the disk cache holds the rest
+const CACHE_LIMIT = 900 * 1024 * 1024; // holds the whole sound set (~850 MB) plus a working set
 const READAHEAD = 8;  // chunks pulled per sequential miss
 const READAHEAD_RUN = 32; // once a run is established, pull much more per round trip
 

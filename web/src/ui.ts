@@ -23,18 +23,22 @@ export function render(root: HTMLElement): void {
       </div>
       <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
         <span id="steam-chip" class="hidden border-l-[3px] border-hud-ready bg-hud-raised px-3 py-1.5 text-xs"></span>
-        <button id="reset" class="hud-button" title="Clear saved settings and ownership, then reload">Reset</button>
-        <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden sm:inline">Display</span>
-          <select id="aspect" class="hud-select"><option value="16:9">16:9</option><option value="4:3">4:3</option></select>
-        </label>
-        <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden sm:inline">Boot</span>
-          <select id="boot" class="hud-select">
-            <option value="fast">Fast start</option>
-            <option value="full">Full start</option>
-          </select>
-        </label>
-        <button id="sound" class="hud-button">Sound on</button>
-        <button id="fullscreen" class="hud-button">Fullscreen</button>
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden sm:inline">Display</span>
+            <select id="aspect" class="hud-select"><option value="16:9">16:9</option><option value="4:3">4:3</option></select>
+          </label>
+          <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden sm:inline">Boot</span>
+            <select id="boot" class="hud-select">
+              <option value="fast">Fast start</option>
+              <option value="full">Full start</option>
+            </select>
+          </label>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="sound" class="hud-button">Sound on</button>
+          <button id="fullscreen" class="hud-button">Fullscreen</button>
+          <button id="reset" class="hud-button" title="Clear saved settings and ownership, then reload">Reset</button>
+        </div>
       </div>
     </header>
 

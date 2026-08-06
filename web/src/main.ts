@@ -115,8 +115,9 @@ el("firstrun-folder").addEventListener("click", async () => {
     });
     const store = database.transaction("handles", "readwrite").objectStore("handles");
     for (const [key, handle] of found) store.put(handle, key);
-    note.textContent = `Found ${[...found.keys()].join(" + ")}. Reloading…`;
-    setTimeout(() => location.reload(), 700);
+    note.textContent = `Found ${[...found.keys()].join(" + ")}. Starting…`;
+    // Drop ?assets=1: reloading with it would just reopen this panel forever.
+    setTimeout(() => location.replace(location.pathname), 700);
   } catch (error) {
     console.debug("folder selection cancelled", error);
     note.textContent = "";

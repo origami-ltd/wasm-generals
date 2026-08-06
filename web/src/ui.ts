@@ -68,29 +68,22 @@ export function render(root: HTMLElement): void {
                   style="--hud-cut-surface: var(--color-hud-raised)">Play</span>
           </button>
 
-          <!-- Holographic sync screen: shown to guests while the full game streams from their host
-               during the match load screen. Pure CSS 3D — transforms/opacity only, so it keeps
-               animating even while the engine hogs the main thread. -->
-          <div id="holo" hidden class="absolute inset-0 z-[8] overflow-hidden bg-[hsl(210_100%_2%/.96)]">
-            <div class="holo-floor"></div>
-            <div class="holo-stack">
-              <div class="holo-core">
-                <div class="holo-ring holo-ring-a"></div>
-                <div class="holo-ring holo-ring-b"></div>
-                <div class="holo-ring holo-ring-c"></div>
-                <div class="holo-beam"></div>
-                <div class="holo-readout">
-                  <div id="holo-percent" class="holo-percent">0%</div>
-                  <div id="holo-mb" class="holo-mb">contacting host…</div>
+          <!-- Guest pre-game sync: one ring, one number, one line. Shown before the game opens
+               while the menu minimum streams from the host. -->
+          <div id="holo" hidden class="absolute inset-0 z-[8] grid place-items-center bg-[hsl(210_100%_2%/.97)]">
+            <div class="holo-min">
+              <div class="holo-ring-wrap">
+                <svg class="holo-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
+                  <circle class="holo-ring-track" cx="60" cy="60" r="54"></circle>
+                  <circle id="holo-ring-fill" class="holo-ring-fill" cx="60" cy="60" r="54"></circle>
+                </svg>
+                <div class="holo-center">
+                  <div id="holo-percent">0%</div>
+                  <div id="holo-mb">contacting host…</div>
                 </div>
               </div>
-              <div class="holo-caption">
-                <div class="holo-title">Syncing battlefield data</div>
-                <div id="holo-file" class="holo-file">&nbsp;</div>
-                <div class="holo-note">Downloading the full game from your host — one wait, then every match runs clean.</div>
-              </div>
+              <div id="holo-file">&nbsp;</div>
             </div>
-            <div class="holo-scan"></div>
           </div>
 
           <!-- Backtick developer console -->

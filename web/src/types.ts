@@ -45,6 +45,7 @@ export interface EmscriptenModule {
   _GeneralsXMouseY?: () => number;
   _GeneralsXSetAudioMuted?: (muted: number) => number;
   _GeneralsXLanSetIdentity?: (client: number) => number;
+  _GeneralsXPump?: () => void;
   ccall?: (name: string, ret: string | null, types: string[], args: unknown[]) => number;
 }
 

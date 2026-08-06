@@ -12,7 +12,9 @@ import type { EmscriptenFS, EmscriptenModule } from "./types";
 // 4 MiB chunks meant a 1 KiB read cost 4 MiB and only 48 blocks fitted the cache, so a map load
 // thrashed and pulled ~35 GB over ~9000 requests. Smaller blocks, far more of them cached.
 const CHUNK_SIZE = 256 * 1024;
-const CACHE_LIMIT = 900 * 1024 * 1024; // holds the whole sound set (~850 MB) plus a working set
+// 400 MB, deliberately well under the renderer's comfort zone: the engine's own wasm heap rides
+// in the same process, and a JS-side gigabyte tips the tab into a GC spiral (black canvas).
+const CACHE_LIMIT = 400 * 1024 * 1024;
 const READAHEAD = 8;  // chunks pulled per sequential miss
 const READAHEAD_RUN = 32; // once a run is established, pull much more per round trip
 
@@ -59,6 +61,7 @@ const workerSource = `
 
 export class ArchiveStreamer {
   private readonly cache = new Map<string, Uint8Array>();
+  private readonly byName = new Map<string, ArchiveEntry>();
   private cached = 0;
   private readonly pending = new Set<string>();
   private run = 0;
@@ -211,7 +214,7 @@ export class ArchiveStreamer {
     const key = `${entry.url}#${index}`;
     // Cap in-flight background reads: firing one per miss opened hundreds of sockets and the server
     // started refusing connections.
-    if (this.cache.has(key) || this.pending.has(key) || this.pending.size >= 4) return;
+    if (this.cache.has(key) || this.pending.has(key) || this.pending.size >= 8) return;
     this.pending.add(key);
     const start = index * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE * READAHEAD, entry.size) - 1;
@@ -233,9 +236,33 @@ export class ArchiveStreamer {
       .finally(() => this.pending.delete(key));
   }
 
+  /** 1 if [offset, offset+size) of the named archive is readable without touching the network;
+      otherwise kick background fetches for the missing chunks and return 0. Called by the engine
+      once per skipped sound — keep it allocation-light, never touch the DOM. */
+  ensure(big: string, offset: number, size: number): number {
+    const entry = this.byName.get((big.split(/[\\/]/).pop() ?? big).toLowerCase());
+    if (!entry || entry.handle) return 1; // unknown → behave as before; local disk → fast reads
+    const first = Math.floor(offset / CHUNK_SIZE);
+    const last = Math.floor((offset + Math.max(1, size) - 1) / CHUNK_SIZE);
+    let resident = 1;
+    for (let index = first; index <= last; index += 1) {
+      const key = `${entry.url}#${index}`;
+      const chunk = this.cache.get(key);
+      if (chunk) {
+        this.cache.delete(key); // re-insert as most recent: pinned while the engine waits on it
+        this.cache.set(key, chunk);
+        continue;
+      }
+      resident = 0;
+      this.schedule(entry, index);
+      index += READAHEAD - 1; // schedule() pulls READAHEAD chunks starting at index
+    }
+    return resident;
+  }
+
   mount(module: EmscriptenModule, entry: ArchiveEntry): void {
     const FS = module.FS as EmscriptenFS;
-    const isAudio = /^(audio|music|speech)/i.test(entry.name);
+    this.byName.set(entry.name.toLowerCase(), entry);
     FS.mkdirTree(entry.mount);
     const node = FS.createFile(entry.mount, entry.name, {}, true, false);
     const size = entry.size;
@@ -254,14 +281,9 @@ export class ArchiveStreamer {
         const firstChunk = Math.floor(position / CHUNK_SIZE);
         const lastChunk = Math.floor((end - 1) / CHUNK_SIZE);
         let written = 0;
-        // A sound played for the first time must not freeze the frame: on a miss inside an audio
-        // archive, hand the decoder silence and fetch in the background — the next play has it.
-        const softMiss = isAudio && !this.cache.has(`${entry.url}#${firstChunk}`);
-        if (softMiss) {
-          for (let index = firstChunk; index <= lastChunk; index += 1) this.schedule(entry, index);
-          buffer.fill(0, offset, offset + (end - position));
-          return end - position;
-        }
+        // No silence-for-missing-bytes here: a decoder fed zeros caches a silent sound forever.
+        // The engine now skips cold sounds before opening them (GeneralsXFileResident), so any
+        // read that reaches this point is expected to block until the real bytes exist.
         for (let index = firstChunk; index <= lastChunk; index += 1) {
           const chunk = this.takeChunk(entry.url, index, entry.handle);
           const chunkStart = index * CHUNK_SIZE;

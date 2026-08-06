@@ -90,7 +90,7 @@ const setStatus = (text: string): void => {
   if (match) {
     const done = Number(match[1]);
     const total = Number(match[2]);
-    report("Loading runtime", `${(done / 2 ** 20).toFixed(1)} / ${(total / 2 ** 20).toFixed(1)} MB`, done / total);
+    report("Loading runtime", `${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`, done / total);
     return;
   }
   if (text) report(text);
@@ -313,6 +313,24 @@ function nextLanClient(): number {
 }
 
 const streamer = new ArchiveStreamer(log);
+// The engine asks this before opening a sound mid-match: resident bytes or skip-and-fetch.
+(globalThis as unknown as { __gxEnsure?: (big: string, offset: number, size: number) => number })
+  .__gxEnsure = (big, offset, size) => streamer.ensure(big, offset, size);
+
+// Chrome throttles window timers in hidden tabs down to once a minute, which freezes the main
+// loop and desyncs LAN peers. Worker timers are exempt: while hidden, its tick drives frames
+// through the engine's pump export. Single-player is already paused by then, so pumping it is
+// harmless; a LAN match keeps simulating, which is the whole point.
+const pumpWorker = new Worker(URL.createObjectURL(new Blob(
+  ["setInterval(() => postMessage(0), 16);"], { type: "text/javascript" })));
+pumpWorker.addEventListener("message", () => {
+  if (!document.hidden) return;
+  try {
+    module?._GeneralsXPump?.();
+  } catch {
+    // Asyncify may be mid-unwind (emscripten_sleep); dropping the tick is the correct move.
+  }
+});
 let lastManifest: { name: string; size: number; url: string; mount: string }[] | null = null;
 
 /* -------------------------------------------------------------- guest sync */
@@ -322,9 +340,10 @@ let lastManifest: { name: string; size: number; url: string; mount: string }[] |
 // ?guest=1 forces the guest flow on localhost, for testing the sync screen without two machines.
 const isGuest = query.get("guest") === "1"
   || !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
-let guestBulk: { done: number; total: number; file: string; finished: boolean } | null = null;
+let guestBulk: { done: number; total: number; menuTotal: number; file: string; finished: boolean } | null = null;
 
-/** The engine polls this inside the match load screen and refuses to start the match while 1. */
+/** The engine polls this inside the match load screen and keeps the game's own load screen
+    (teams, factions, map) up while 1 — a match must not start before the sync lands. */
 function setHoldMatch(hold: boolean): void {
   (globalThis as unknown as { __gxHoldMatch?: number }).__gxHoldMatch = hold ? 1 : 0;
 }
@@ -335,13 +354,16 @@ let holoTimer: ReturnType<typeof setInterval> | undefined;
 function holoShow(): void {
   if (!holo.hidden) return;
   holo.hidden = false;
+  const ringFill = document.getElementById("holo-ring-fill") as unknown as SVGCircleElement;
   holoTimer = setInterval(() => {
     if (!guestBulk) return;
-    const ratio = guestBulk.total ? guestBulk.done / guestBulk.total : 0;
+    // The ring covers the menu minimum only: it hits 100% exactly when Play appears.
+    const scoped = Math.min(guestBulk.done, guestBulk.menuTotal);
+    const ratio = guestBulk.menuTotal ? scoped / guestBulk.menuTotal : 0;
     el("holo-percent").textContent = `${Math.floor(ratio * 100)}%`;
-    el("holo-mb").textContent =
-      `${(guestBulk.done / 2 ** 20).toFixed(0)} / ${(guestBulk.total / 2 ** 20).toFixed(0)} MB`;
-    el("holo-file").textContent = guestBulk.finished ? "arsenal complete" : guestBulk.file;
+    el("holo-mb").textContent = `${mb(scoped)}/${mb(guestBulk.menuTotal)} MB`;
+    el("holo-file").textContent = guestBulk.file;
+    ringFill.style.strokeDashoffset = String(339.292 * (1 - Math.min(1, ratio)));
   }, 250);
 }
 
@@ -351,41 +373,41 @@ function holoHide(): void {
   clearInterval(holoTimer);
 }
 
-/** The whole game, pulled behind the hologram BEFORE the game opens: the guest waits here once,
-    then plays with everything local. Menu art and the full sound set go into memory, the bulk
-    into the browser's disk cache. In-game loads then use the game's own load screen untouched.
-    The engine-side hold stays raised while this runs as a belt-and-braces guard, but in this flow
-    the download always lands before the engine even boots. */
-async function guestPreload(entries: { name: string; size: number }[]): Promise<void> {
-  const warmSet = entries.filter((entry) => MENU_ARCHIVES.test(entry.name));
-  const primeSet = entries.filter((entry) => !MENU_ARCHIVES.test(entry.name));
-  const warmTotal = warmSet.reduce((sum, entry) => sum + entry.size, 0);
+/** Guest download in two phases. Phase one pulls the menu minimum behind the hologram — Play
+    only exists once the menu can actually open. Phase two pulls the rest (audio first) into the
+    browser's disk cache behind the menu; until it lands, the engine keeps a match waiting on the
+    game's own load screen. Returns when phase one is done. */
+function guestPreload(entries: { name: string; size: number }[]): Promise<void> {
+  const core = entries.filter((entry) => MENU_CORE.test(entry.name));
+  const rest = sortedRest(entries);
+  const coreTotal = core.reduce((sum, entry) => sum + entry.size, 0);
   const total = entries.reduce((sum, entry) => sum + entry.size, 0);
-  guestBulk = { done: 0, total, file: "contacting host…", finished: false };
+  guestBulk = { done: 0, total, menuTotal: coreTotal, file: "contacting host…", finished: false };
   setHoldMatch(true);
   holoShow();
   const seen = (base: number) => (done: number, name: string): void => {
     if (!guestBulk) return;
     guestBulk.done = base + done;
     guestBulk.file = name;
-    report("Downloading", `${name} · ${((base + done) / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
-      (base + done) / total);
+    report("Downloading", `${name} · ${mb(base + done)}/${mb(total)} MB`, (base + done) / total);
   };
-  try {
-    await streamer.warm(warmSet as never, Number.MAX_SAFE_INTEGER, seen(0));
-    await streamer.prime(primeSet as never, seen(warmTotal));
-    log("Full game synced from the host.");
-  } catch {
-    log("Guest sync stopped early — archives stream on demand instead.");
-  } finally {
-    if (guestBulk) {
-      guestBulk.done = guestBulk.total;
-      guestBulk.finished = true;
-    }
-    setHoldMatch(false);
-    holoHide();
-    report("", "");
-  }
+  const menuReady = streamer
+    .warm(core as never, Number.MAX_SAFE_INTEGER, seen(0))
+    .catch(() => {})
+    .then(() => holoHide());
+  void menuReady
+    .then(() => streamer.prime(rest as never, seen(coreTotal)))
+    .then(() => log("Full game synced from the host."))
+    .catch(() => log("Guest sync stopped early — archives stream on demand instead."))
+    .finally(() => {
+      if (guestBulk) {
+        guestBulk.done = guestBulk.total;
+        guestBulk.finished = true;
+      }
+      setHoldMatch(false);
+      report("", "");
+    });
+  return menuReady;
 }
 
 // Chrome suspends an AudioContext created without user activation; miniaudio keeps feeding it and
@@ -409,52 +431,39 @@ for (const event of ["pointerdown", "keydown", "visibilitychange"]) {
   addEventListener(event, resumeAudio, { capture: true });
 }
 
-/** Sound and music first: those are the reads that would otherwise stall a frame mid-battle. */
-/** Two phases, because the files are always local or on the LAN: pull the whole game in, but pull
-    what the menu needs first so Play is not held for gigabytes.
-    Menu: INI, window/UI art, English strings, music. Match: everything else. */
-const MENU_ARCHIVES = /^(ini|window|english|gensec|patch|audio|music|speech)/i;
+/** The menu minimum: what must be resident before the shell can open. Audio deliberately not
+    here — sound rides the disk cache, because a tab that hoards the ~850 MB sound set in JS dies
+    in a GC spiral once the engine heap lands on top (seen as "Running" over a black canvas). */
+const MENU_CORE = /^(ini|window|english|gensec|patch)/i;
 
+const mb = (bytes: number): string => (bytes / 2 ** 20).toFixed(0);
+
+/** Download order for everything outside the menu core: a missing callout is the loudest failure,
+    so sound first, textures and maps behind it. */
+const matchRank = (name: string): number =>
+  /^speech/i.test(name) ? 0 : /^audio/i.test(name) ? 1 : /^music/i.test(name) ? 2 : 3;
+
+function sortedRest(entries: { name: string; size: number }[]): { name: string; size: number }[] {
+  return entries
+    .filter((entry) => !MENU_CORE.test(entry.name))
+    .sort((a, b) => matchRank(a.name) - matchRank(b.name));
+}
+
+/** Everything local before Play: the menu core into memory, the rest — audio first — into the
+    browser's disk cache. Nothing big stays in JS. */
 function preloadEverything(entries: { name: string; size: number }[]): Promise<void> {
-  // Audio is cheap and every miss is audible, so the whole sound set is pulled into memory up front
-  // along with the menu. Textures and models stream — a late texture is a blank frame, not a glitch.
-  const menu = entries.filter((entry) => MENU_ARCHIVES.test(entry.name));
-  const match = entries.filter((entry) => !MENU_ARCHIVES.test(entry.name));
+  const core = entries.filter((entry) => MENU_CORE.test(entry.name));
+  const rest = sortedRest(entries);
+  const coreTotal = core.reduce((sum, entry) => sum + entry.size, 0);
   const total = entries.reduce((sum, entry) => sum + entry.size, 0);
-  // Menu assets go into memory (small, needed immediately); the rest is primed into the browser's
-  // disk cache so the whole game is local without holding gigabytes in the tab.
+  const seen = (base: number) => (done: number, name: string): void =>
+    report("Downloading", `${name} · ${mb(base + done)}/${mb(total)} MB`, (base + done) / total);
   return streamer
-    .warm(menu as never, Number.MAX_SAFE_INTEGER, (done, name) =>
-      report("", `Caching menu · ${name} · ${(done / 2 ** 20).toFixed(0)} MB`))
-    .then(() => streamer.prime(match as never, (done, name) =>
-      report("", `Caching game · ${name} · ${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
-        done / total)))
+    .warm(core as never, Number.MAX_SAFE_INTEGER, seen(0))
+    .then(() => streamer.prime(rest as never, seen(coreTotal)))
     .then(() => {
       report("", "");
       log("All archives cached locally.");
-    });
-}
-
-function warmAudio(entries: { name: string; size: number }[]): void {
-  // Anything read mid-frame stutters if it is not already in memory: sounds and textures alike.
-  // Warm them in the order the game reaches for them.
-  const priority = (name: string): number =>
-    /^music/i.test(name) ? 0
-    : /^audio.*zh/i.test(name) ? 1
-    : /^audio/i.test(name) ? 2
-    : 3; // speech last: big and least missed
-  // Textures are deliberately not warmed wholesale: the set is larger than the cache, so it only
-  // evicts the audio that was already there. They ride the normal streaming path instead.
-  const audio = entries
-    .filter((entry) => /^(audio|music|speech)/i.test(entry.name))
-    .sort((a, b) => priority(a.name) - priority(b.name));
-  const total = audio.reduce((sum, entry) => sum + entry.size, 0);
-  void streamer
-    .warm(audio as never, total, (done, name) =>
-      report("", `Caching · ${name} · ${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
-        done / total))
-    .then(() => {
-      log("Audio archives cached locally.");
     });
 }
 let module: EmscriptenModule | undefined;
@@ -606,7 +615,9 @@ if (manifest && !manifest.missing) {
 }
 
 play.hidden = false;
-report("Ready", "everything downloaded — click Play to start audio");
+report("Ready", isGuest
+  ? "menu ready — click Play; the rest keeps syncing behind it"
+  : "everything downloaded — click Play to start audio");
 play.addEventListener("click", () => {
   play.hidden = true;
   report("Starting engine", "loading game data");

@@ -197,6 +197,11 @@ const config: Record<string, unknown> = {
     // Ownership gate: no proof, no game. The dependency is deliberately never removed when it fails.
     (instance: EmscriptenModule) => {
       instance.addRunDependency("gx-ownership");
+      // ?assets=1 re-opens the panel to point at a different install without clearing everything.
+      if (query.get("assets") === "1") {
+        el("firstrun").hidden = false;
+        return; // dependency stays: game waits for a fresh choice
+      }
       fetch("/GeneralsXSteamSession")
         .then((response) => response.json())
         .then((session: { gate: boolean; authenticated: boolean; owns: boolean; name: string }) => {

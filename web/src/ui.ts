@@ -22,7 +22,7 @@ export function render(root: HTMLElement): void {
         <p class="m-0 hidden text-sm text-hud-muted sm:block">WebAssembly + WebGPU</p>
       </div>
       <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-        <span id="steam-chip" class="hidden border-l-[3px] border-hud-ready bg-hud-raised px-3 py-1.5 text-xs"></span>
+        <span id="share-note" class="hidden border-l-[3px] border-hud-ready bg-hud-raised px-3 py-1.5 text-xs"></span>
         <div class="flex items-center gap-2">
           <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden sm:inline">Display</span>
             <select id="aspect" class="hud-select"><option value="16:9">16:9</option><option value="4:3">4:3</option></select>
@@ -35,6 +35,7 @@ export function render(root: HTMLElement): void {
           </label>
         </div>
         <div class="flex items-center gap-2">
+          <button id="share" class="hud-button" title="Copy a link so players on your network can join">Share</button>
           <button id="sound" class="hud-button">Sound on</button>
           <button id="fullscreen" class="hud-button">Fullscreen</button>
           <button id="reset" class="hud-button" title="Clear saved settings and ownership, then reload">Reset</button>
@@ -58,27 +59,18 @@ export function render(root: HTMLElement): void {
 
           <div id="firstrun" hidden class="absolute inset-0 z-[6] grid place-items-center bg-[hsl(210_100%_2%/.94)] p-4">
             <div class="hud-cut max-h-full max-w-4xl overflow-auto p-4 text-left sm:p-7" style="--hud-cut-surface: var(--color-hud-raised)">
-              <h2 class="m-0 mb-2 uppercase tracking-[0.12em] text-hud-accent [text-shadow:0_0_12px_hsl(188_100%_50%/.5)]">Prove you own the game</h2>
+              <h2 class="m-0 mb-2 uppercase tracking-[0.12em] text-hud-accent [text-shadow:0_0_12px_hsl(188_100%_50%/.5)]">Load your game files</h2>
               <p class="mb-5 text-[13px] text-hud-muted">GeneralsX runs your own copy of
-                 <strong>Command &amp; Conquer Generals — Zero Hour</strong>. Either one is enough:</p>
-              <div class="grid items-start gap-4 md:grid-cols-[1fr_auto_1fr]">
-                <div class="border border-hud-border bg-[hsl(210_100%_4%)] p-4">
-                  <h3 class="m-0 mb-2 text-sm uppercase tracking-[0.08em] text-hud-accent">Sign in through Steam</h3>
-                  <p class="text-[13px] text-hud-muted">Verifies ownership on your Steam account. Nothing is downloaded.</p>
-                  <button id="firstrun-steam" class="hud-button mt-2">Sign in through Steam</button>
-                  <p id="firstrun-steam-note" class="min-h-4 text-xs text-hud-warm"></p>
-                </div>
-                <div class="hidden items-center justify-center self-stretch text-xs uppercase tracking-widest text-hud-muted md:flex">or</div>
-                <div class="border border-hud-border bg-[hsl(210_100%_4%)] p-4">
-                  <h3 class="m-0 mb-2 flex items-center gap-2 text-sm uppercase tracking-[0.08em] text-hud-accent">
-                    Select your game folder
-                    <button id="firstrun-info" aria-label="Where to find the game folder"
-                            class="hud-button h-5 min-h-5 w-5 rounded-full px-0 text-xs [clip-path:none]">i</button>
-                  </h3>
-                  <p class="text-[13px] text-hud-muted">Point the browser at your installed copy. The files stay on your machine.</p>
-                  <button id="firstrun-folder" class="hud-button mt-2">Select game folder</button>
-                  <p id="firstrun-folder-note" class="min-h-4 text-xs text-hud-warm"></p>
-                </div>
+                 <strong>Command &amp; Conquer Generals — Zero Hour</strong>. Nothing is downloaded:</p>
+              <div class="border border-hud-border bg-[hsl(210_100%_4%)] p-4">
+                <h3 class="m-0 mb-2 flex items-center gap-2 text-sm uppercase tracking-[0.08em] text-hud-accent">
+                  Select your game folder
+                  <button id="firstrun-info" aria-label="Where to find the game folder"
+                          class="hud-button h-5 min-h-5 w-5 rounded-full px-0 text-xs [clip-path:none]">i</button>
+                </h3>
+                <p class="text-[13px] text-hud-muted">Point the browser at your installed copy. The files stay on your machine.</p>
+                <button id="firstrun-folder" class="hud-button mt-2">Select game folder</button>
+                <p id="firstrun-folder-note" class="min-h-4 text-xs text-hud-warm"></p>
               </div>
               <div id="firstrun-info-panel" hidden class="mt-4 space-y-2 border-l-[3px] border-hud-accent bg-[hsl(210_100%_4%)] p-3.5 text-xs text-hud-muted">${STEAM_HELP}</div>
             </div>

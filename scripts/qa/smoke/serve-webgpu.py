@@ -14,6 +14,7 @@ import hmac
 import json
 import os
 import re
+import socket
 import secrets
 import struct
 import time
@@ -87,109 +88,7 @@ class LanRelay:
 
 LAN_RELAY = LanRelay()
 
-# GeneralsX @feature Codex 06/08/2026 Steam ownership gate. Players sign in through Steam OpenID; with a
-# Steam Web API key configured we verify they own the game before serving it. Config lives next to the
-# server data: steam_api_key.txt (enables the gate), steam_app_ids.txt (comma-separated, optional).
-STEAM_DIR = Path.home() / "Library" / "Application Support" / "GeneralsX"
-STEAM_KEY_FILE = STEAM_DIR / "steam_api_key.txt"
-STEAM_APPS_FILE = STEAM_DIR / "steam_app_ids.txt"
-STEAM_SECRET_FILE = STEAM_DIR / "session_secret"
-STEAM_OPENID = "https://steamcommunity.com/openid/login"
-# Default: Command & Conquer Generals / Zero Hour Steam releases; adjust steam_app_ids.txt if needed.
-STEAM_DEFAULT_APPS = "2229880,2732960"
-STEAM_SESSION_SECONDS = 7 * 24 * 3600
-
-
-def steam_api_key():
-    try:
-        return STEAM_KEY_FILE.read_text().strip() or None
-    except OSError:
-        return None
-
-
-def steam_gate_enabled():
-    return steam_api_key() is not None
-
-
-def steam_app_ids():
-    try:
-        raw = STEAM_APPS_FILE.read_text().strip()
-    except OSError:
-        raw = ""
-    return [int(x) for x in (raw or STEAM_DEFAULT_APPS).split(",") if x.strip().isdigit()]
-
-
-def steam_secret():
-    try:
-        return STEAM_SECRET_FILE.read_bytes()
-    except OSError:
-        secret = secrets.token_bytes(32)
-        STEAM_DIR.mkdir(parents=True, exist_ok=True)
-        STEAM_SECRET_FILE.write_bytes(secret)
-        return secret
-
-
-def steam_sign(payload: str) -> str:
-    return hmac.new(steam_secret(), payload.encode(), hashlib.sha256).hexdigest()
-
-
-def steam_make_cookie(steamid: str, owns: bool, name: str) -> str:
-    expires = str(int(time.time()) + STEAM_SESSION_SECONDS)
-    name_b64 = base64.urlsafe_b64encode(name.encode()).decode()
-    payload = f"{steamid}.{1 if owns else 0}.{expires}.{name_b64}"
-    return f"{payload}.{steam_sign(payload)}"
-
-
-def steam_read_cookie(header: str):
-    for part in (header or "").split(";"):
-        key, _, value = part.strip().partition("=")
-        if key != "gxsteam":
-            continue
-        pieces = value.rsplit(".", 1)
-        if len(pieces) != 2 or not hmac.compare_digest(steam_sign(pieces[0]), pieces[1]):
-            return None
-        steamid, owns, expires, name_b64 = pieces[0].split(".")
-        if int(expires) < time.time():
-            return None
-        name = base64.urlsafe_b64decode(name_b64.encode()).decode()
-        return {"steamid": steamid, "owns": owns == "1", "name": name}
-    return None
-
-
-def steam_check_ownership(steamid: str):
-    key = steam_api_key()
-    if not key:
-        return False, "Steam API key not configured on the server."
-    try:
-        url = ("https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?" +
-               urllib.parse.urlencode({"key": key, "steamid": steamid, "format": "json",
-                                       "include_played_free_games": 1}))
-        with urllib.request.urlopen(url, timeout=15) as response:
-            games = json.load(response).get("response", {}).get("games", []) or []
-        owned = {g.get("appid") for g in games}
-        if owned & set(steam_app_ids()):
-            return True, ""
-        if not games:
-            return False, "Steam profile is private: make Game Details public and sign in again."
-        return False, "This Steam account does not own the game."
-    except Exception as error:  # noqa: BLE001 - report any API failure to the player
-        return False, f"Steam API error: {error}"
-
-
-def steam_player_name(steamid: str) -> str:
-    key = steam_api_key()
-    if not key:
-        return ""
-    try:
-        url = ("https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?" +
-               urllib.parse.urlencode({"key": key, "steamids": steamid}))
-        with urllib.request.urlopen(url, timeout=10) as response:
-            players = json.load(response).get("response", {}).get("players", [])
-        return players[0].get("personaname", "") if players else ""
-    except Exception:  # noqa: BLE001
-        return ""
-
-
+CONFIG_DIR = Path.home() / "Library" / "Application Support" / "GeneralsX"
 
 # GeneralsX @build Codex 04/08/2026 Provide deterministic local browser isolation.
 class WebGPURequestHandler(SimpleHTTPRequestHandler):
@@ -244,60 +143,19 @@ document.getElementById("log").textContent =
         if path == "/GeneralsXLan" and self.headers.get("Upgrade", "").lower() == "websocket":
             self.handle_lan_websocket()
             return
-        if path == "/GeneralsXSteamSession":
-            session = steam_read_cookie(self.headers.get("Cookie", ""))
-            payload = {"gate": steam_gate_enabled(), "authenticated": session is not None,
-                       "owns": bool(session and session["owns"]),
-                       "name": session["name"] if session else ""}
-            body = json.dumps(payload).encode()
+        if path == "/GeneralsXShare":
+            # LAN invite: the address other machines on this network use to reach this host.
+            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                probe.connect(("192.0.2.1", 80))  # never sent; just picks the outbound interface
+                address = probe.getsockname()[0]
+            except OSError:
+                address = "127.0.0.1"
+            finally:
+                probe.close()
+            body = json.dumps({"url": f"https://{address}:{self.server.server_address[1]}/"}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-            return
-        if path == "/GeneralsXSteamLogin":
-            host = self.headers.get("Host", "localhost:8765")
-            return_to = f"https://{host}/GeneralsXSteamReturn"
-            query = urllib.parse.urlencode({
-                "openid.ns": "http://specs.openid.net/auth/2.0",
-                "openid.mode": "checkid_setup",
-                "openid.return_to": return_to,
-                "openid.realm": f"https://{host}/",
-                "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
-                "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
-            })
-            self.send_response(302)
-            self.send_header("Location", f"{STEAM_OPENID}?{query}")
-            self.send_header("Content-Length", "0")
-            self.end_headers()
-            return
-        if path == "/GeneralsXSteamReturn":
-            params = dict(urllib.parse.parse_qsl(urlsplit(self.path).query))
-            params["openid.mode"] = "check_authentication"
-            verify = urllib.request.Request(STEAM_OPENID, urllib.parse.urlencode(params).encode())
-            try:
-                with urllib.request.urlopen(verify, timeout=15) as response:
-                    valid = b"is_valid:true" in response.read()
-            except Exception:  # noqa: BLE001
-                valid = False
-            claimed = params.get("openid.claimed_id", "")
-            steamid = claimed.rsplit("/", 1)[-1] if valid and claimed.rsplit("/", 1)[-1].isdigit() else None
-            # Popup flow: the window closes itself and tells the opener to re-check the session.
-            body = (b"<!doctype html><meta charset=utf-8><title>Steam</title>"
-                    b"<body style='background:#04080c;color:#7fe7ff;font:14px monospace;padding:24px'>"
-                    b"Signed in. You can close this window."
-                    b"<script>opener&&opener.postMessage('gx-steam-done','*');close()</script>")
-            self.send_response(200)
-            if steamid:
-                owns, reason = steam_check_ownership(steamid)
-                name = steam_player_name(steamid)
-                cookie = steam_make_cookie(steamid, owns, name)
-                self.send_header("Set-Cookie",
-                                 f"gxsteam={cookie}; Path=/; Max-Age={STEAM_SESSION_SECONDS}; Secure; HttpOnly; SameSite=Lax")
-                if not owns:
-                    print(f"Steam login {steamid}: ownership denied ({reason})")
-            self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -305,12 +163,6 @@ document.getElementById("log").textContent =
         if path == "/GeneralsXAssets":
             self.send_asset_manifest()
             return
-        # No proof, no game data: with the gate on, archives and the wasm bundle need a valid owning session.
-        if steam_gate_enabled() and (path.endswith(".big") or path.endswith(".data") or path.endswith(".wasm")):
-            session = steam_read_cookie(self.headers.get("Cookie", ""))
-            if not (session and session["owns"]):
-                self.send_error(403, "Steam ownership required")
-                return
         if path.endswith(".big"):
             self._cacheable = True
         range_header = self.headers.get("Range")
@@ -341,7 +193,7 @@ document.getElementById("log").textContent =
     # GeneralsX @feature Codex 06/08/2026 First-run: game archives come from the player's own install.
     # Default location is ~/GeneralsX/{Generals,GeneralsZH}; custom paths (e.g. a Steam install) go in
     # game_paths.txt next to the server data, one KEY=path per line: GENERALS=... / ZEROHOUR=...
-    GAME_PATHS_FILE = STEAM_DIR / "game_paths.txt"
+    GAME_PATHS_FILE = CONFIG_DIR / "game_paths.txt"
 
     def resolve_game_dirs(self) -> None:
         root = Path(self.directory)

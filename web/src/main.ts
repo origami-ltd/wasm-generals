@@ -73,18 +73,18 @@ aspect.addEventListener("change", () => {
 
 el("reset").addEventListener("click", () => {
   localStorage.clear();
-  document.cookie = "gxsteam=; Path=/; Max-Age=0";
   indexedDB.deleteDatabase("generalsx");
   location.reload();
 });
 
 /* ------------------------------------------------------------ first-run gate */
-el("firstrun-steam").addEventListener("click", () => {
-  // Popup, not a redirect: a full navigation would throw away the loaded runtime.
-  open("/GeneralsXSteamLogin", "gx-steam", "width=820,height=720");
-  addEventListener("message", (event) => {
-    if (event.data === "gx-steam-done") location.reload();
-  }, { once: true });
+// Share the running host with players on the same network: they stream the archives from here.
+el("share").addEventListener("click", async () => {
+  const note = el("share-note");
+  const { url } = (await (await fetch("/GeneralsXShare")).json()) as { url: string };
+  await navigator.clipboard?.writeText(url).catch(() => {});
+  note.textContent = `Copied: ${url}`;
+  note.classList.remove("hidden");
 });
 el("firstrun-info").addEventListener("click", () => {
   const panel = el("firstrun-info-panel");
@@ -96,7 +96,7 @@ el("firstrun-folder").addEventListener("click", async () => {
     showDirectoryPicker?: (o: object) => Promise<FileSystemDirectoryHandle>;
   }).showDirectoryPicker;
   if (!picker) {
-    note.textContent = "This browser cannot pick folders — use Chrome, or the Steam option.";
+    note.textContent = "This browser cannot pick folders — use Chrome or Edge.";
     return;
   }
   try {
@@ -205,34 +205,14 @@ const config: Record<string, unknown> = {
   printErr: (line: string) => log(line),
   setStatus,
   preRun: [
-    // Ownership gate: no proof, no game. The dependency is deliberately never removed when it fails.
-    (instance: EmscriptenModule) => {
-      instance.addRunDependency("gx-ownership");
-      // ?assets=1 re-opens the panel to point at a different install without clearing everything.
-      if (query.get("assets") === "1") {
-        el("firstrun").hidden = false;
-        return; // dependency stays: game waits for a fresh choice
-      }
-      fetch("/GeneralsXSteamSession")
-        .then((response) => response.json())
-        .then((session: { gate: boolean; authenticated: boolean; owns: boolean; name: string }) => {
-          if (!session.gate || (session.authenticated && session.owns)) {
-            if (session.gate) {
-              const chip = el("steam-chip");
-              chip.textContent = `STEAM ✓ ${session.name}`.trim();
-              chip.classList.remove("hidden");
-            }
-            instance.removeRunDependency("gx-ownership");
-            return;
-          }
-          el("firstrun").hidden = false;
-          if (session.authenticated) el("firstrun-steam-note").textContent = "Ownership not confirmed on this account.";
-        })
-        .catch(() => instance.removeRunDependency("gx-ownership"));
-    },
     // Archives stream on demand; without them the first-run panel explains how to point at the game.
     (instance: EmscriptenModule) => {
       instance.addRunDependency("gx-assets");
+      // ?assets=1 reopens the picker to point at a different install.
+      if (query.get("assets") === "1") {
+        el("firstrun").hidden = false;
+        return; // dependency stays: wait for a fresh choice
+      }
       Promise.all([localArchives(), streamer.ready])
         .then(async ([local]) => {
           // A picked install wins: read straight from the player's disk, server not involved.

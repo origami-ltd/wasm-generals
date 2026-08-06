@@ -17,6 +17,9 @@ rsync -a \
 # GeneralsX @feature Codex 05/08/2026 Expose the .big archives for streaming instead of packaging them.
 ln -sfn "$HOME/GeneralsX/GeneralsZH" "$DEST/GeneralsZH"
 ln -sfn "$HOME/GeneralsX/Generals" "$DEST/Generals"
+# Browsable copy of the install for the folder picker (symlink, nothing duplicated).
+mkdir -p "$DEST/assets"
+ln -sfn "$HOME/GeneralsX" "$DEST/assets/generals"
 
 launchctl kickstart -k "gui/$(id -u)/com.generalsx.serve" 2>/dev/null || true
 echo "Deployed to $DEST"

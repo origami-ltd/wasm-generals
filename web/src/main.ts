@@ -1,5 +1,5 @@
 import "./style.css";
-import { ArchiveStreamer, loadManifest } from "./streaming";
+import { ArchiveStreamer, loadManifest, localArchives } from "./streaming";
 import { el, render } from "./ui";
 import type { EmscriptenModule, ModuleFactory } from "./types";
 
@@ -113,7 +113,8 @@ el("firstrun-folder").addEventListener("click", async () => {
     note.textContent = "Folders saved. Reloading…";
     setTimeout(() => location.reload(), 600);
   } catch (error) {
-    note.textContent = `Folder selection cancelled: ${(error as Error).message}`;
+    console.debug("folder selection cancelled", error);
+    note.textContent = "";
   }
 });
 
@@ -226,8 +227,16 @@ const config: Record<string, unknown> = {
     // Archives stream on demand; without them the first-run panel explains how to point at the game.
     (instance: EmscriptenModule) => {
       instance.addRunDependency("gx-assets");
-      Promise.all([loadManifest(), streamer.ready])
-        .then(([manifest]) => {
+      Promise.all([localArchives(), streamer.ready])
+        .then(async ([local]) => {
+          // A picked install wins: read straight from the player's disk, server not involved.
+          if (local.length) {
+            for (const entry of local) streamer.mount(instance, entry);
+            log(`Streaming ${local.length} archives from your selected folders.`);
+            instance.removeRunDependency("gx-assets");
+            return;
+          }
+          const manifest = await loadManifest();
           if (manifest.missing) {
             el("firstrun").hidden = false;
             log("Game archives not found — waiting for the player to point at their install.");

@@ -17,6 +17,8 @@ export interface ArchiveEntry {
   name: string;
   url: string;
   size: number;
+  /** Set when the player picked their install with the directory picker; reads then bypass the server. */
+  handle?: FileSystemFileHandle;
 }
 
 export interface AssetManifest {
@@ -29,13 +31,19 @@ export interface AssetManifest {
 const workerSource = `
   postMessage("ready");
   onmessage = async (event) => {
-    const { url, start, end, sab } = event.data;
+    const { url, handle, start, end, sab } = event.data;
     const state = new Int32Array(sab, 0, 2);
     const data = new Uint8Array(sab, 8);
     try {
-      const response = await fetch(url, { headers: { Range: "bytes=" + start + "-" + end } });
-      if (!response.ok && response.status !== 206) throw new Error("HTTP " + response.status);
-      const bytes = new Uint8Array(await response.arrayBuffer());
+      let bytes;
+      if (handle) {
+        const file = await handle.getFile();
+        bytes = new Uint8Array(await file.slice(start, end + 1).arrayBuffer());
+      } else {
+        const response = await fetch(url, { headers: { Range: "bytes=" + start + "-" + end } });
+        if (!response.ok && response.status !== 206) throw new Error("HTTP " + response.status);
+        bytes = new Uint8Array(await response.arrayBuffer());
+      }
       data.set(bytes.subarray(0, data.length));
       state[1] = Math.min(bytes.length, data.length);
       Atomics.store(state, 0, 1);
@@ -63,7 +71,7 @@ export class ArchiveStreamer {
     this.ready = new Promise((resolve) => this.worker?.addEventListener("message", resolve, { once: true }));
   }
 
-  private fetchChunkSync(url: string, index: number): Uint8Array {
+  private fetchChunkSync(url: string, index: number, handle?: FileSystemFileHandle): Uint8Array {
     if (!this.worker || !this.buffer) {
       this.onError("SharedArrayBuffer unavailable: archives cannot stream.");
       return new Uint8Array(0);
@@ -72,7 +80,8 @@ export class ArchiveStreamer {
     Atomics.store(state, 0, 0);
     const start = index * CHUNK_SIZE;
     this.worker.postMessage({
-      url: new URL(url, location.href).href,
+      url: handle ? "" : new URL(url, location.href).href,
+      handle,
       start,
       end: start + CHUNK_SIZE - 1,
       sab: this.buffer,
@@ -91,7 +100,7 @@ export class ArchiveStreamer {
     return new Uint8Array(this.buffer.slice(8, 8 + (state[1] ?? 0)));
   }
 
-  private takeChunk(url: string, index: number): Uint8Array {
+  private takeChunk(url: string, index: number, handle?: FileSystemFileHandle): Uint8Array {
     const key = `${url}#${index}`;
     const cached = this.cache.get(key);
     if (cached) {
@@ -99,7 +108,7 @@ export class ArchiveStreamer {
       this.cache.set(key, cached);
       return cached;
     }
-    const chunk = this.fetchChunkSync(url, index);
+    const chunk = this.fetchChunkSync(url, index, handle);
     this.cache.set(key, chunk);
     let total = 0;
     for (const value of this.cache.values()) total += value.length;
@@ -132,7 +141,7 @@ export class ArchiveStreamer {
         const lastChunk = Math.floor((end - 1) / CHUNK_SIZE);
         let written = 0;
         for (let index = firstChunk; index <= lastChunk; index += 1) {
-          const chunk = this.takeChunk(entry.url, index);
+          const chunk = this.takeChunk(entry.url, index, entry.handle);
           const chunkStart = index * CHUNK_SIZE;
           const from = Math.max(position, chunkStart) - chunkStart;
           const to = Math.min(end, chunkStart + chunk.length) - chunkStart;
@@ -149,4 +158,37 @@ export class ArchiveStreamer {
 export async function loadManifest(): Promise<AssetManifest> {
   const response = await fetch("/GeneralsXAssets");
   return (await response.json()) as AssetManifest;
+}
+
+/** Archives from the folders the player picked, read locally with no server involvement. */
+export async function localArchives(): Promise<ArchiveEntry[]> {
+  const database = await new Promise<IDBDatabase>((resolve, reject) => {
+    const request = indexedDB.open("generalsx", 1);
+    request.onupgradeneeded = () => request.result.createObjectStore("handles");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+  const store = database.transaction("handles", "readonly").objectStore("handles");
+  const read = (key: string) =>
+    new Promise<FileSystemDirectoryHandle | undefined>((resolve) => {
+      const request = store.get(key);
+      request.onsuccess = () => resolve(request.result as FileSystemDirectoryHandle | undefined);
+      request.onerror = () => resolve(undefined);
+    });
+  const entries: ArchiveEntry[] = [];
+  for (const mount of ["GeneralsZH", "Generals"] as const) {
+    const directory = await read(mount);
+    if (!directory) continue;
+    if ((await directory.queryPermission?.({ mode: "read" })) !== "granted"
+        && (await directory.requestPermission?.({ mode: "read" })) !== "granted") {
+      return [];
+    }
+    for await (const [name, handle] of directory.entries()) {
+      if (!name.toLowerCase().endsWith(".big") || handle.kind !== "file") continue;
+      const file = await (handle as FileSystemFileHandle).getFile();
+      entries.push({ mount: `/${mount}`, name, url: `local:${mount}/${name}`, size: file.size,
+                     handle: handle as FileSystemFileHandle });
+    }
+  }
+  return entries;
 }

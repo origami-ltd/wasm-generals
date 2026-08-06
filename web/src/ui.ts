@@ -56,17 +56,18 @@ export function render(root: HTMLElement): void {
             <div class="hud-cut max-h-full max-w-4xl overflow-auto p-4 text-left sm:p-7" style="--hud-cut-surface: var(--color-hud-raised)">
               <h2 class="m-0 mb-2 uppercase tracking-[0.12em] text-hud-accent [text-shadow:0_0_12px_hsl(188_100%_50%/.5)]">Prove you own the game</h2>
               <p class="mb-5 text-[13px] text-hud-muted">GeneralsX runs your own copy of
-                 <strong>Command &amp; Conquer Generals — Zero Hour</strong>. Choose one:</p>
-              <div class="grid gap-4 md:grid-cols-2">
+                 <strong>Command &amp; Conquer Generals — Zero Hour</strong>. Either one is enough:</p>
+              <div class="grid items-start gap-4 md:grid-cols-[1fr_auto_1fr]">
                 <div class="border border-hud-border bg-[hsl(210_100%_4%)] p-4">
-                  <h3 class="m-0 mb-2 text-sm uppercase tracking-[0.08em] text-hud-accent">1 · Sign in through Steam</h3>
+                  <h3 class="m-0 mb-2 text-sm uppercase tracking-[0.08em] text-hud-accent">Sign in through Steam</h3>
                   <p class="text-[13px] text-hud-muted">Verifies ownership on your Steam account. Nothing is downloaded.</p>
                   <button id="firstrun-steam" class="hud-button mt-2">Sign in through Steam</button>
                   <p id="firstrun-steam-note" class="min-h-4 text-xs text-hud-warm"></p>
                 </div>
+                <div class="hidden items-center justify-center self-stretch text-xs uppercase tracking-widest text-hud-muted md:flex">or</div>
                 <div class="border border-hud-border bg-[hsl(210_100%_4%)] p-4">
                   <h3 class="m-0 mb-2 flex items-center gap-2 text-sm uppercase tracking-[0.08em] text-hud-accent">
-                    2 · Select your game folder
+                    Select your game folder
                     <button id="firstrun-info" aria-label="Where to find the game folder"
                             class="hud-button h-5 min-h-5 w-5 rounded-full px-0 text-xs [clip-path:none]">i</button>
                   </h3>

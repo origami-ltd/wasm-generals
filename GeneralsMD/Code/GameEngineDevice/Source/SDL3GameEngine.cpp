@@ -207,6 +207,12 @@ extern "C" int GeneralsXFileResident(const char *name)
 	const ArchivedFileInfo *info = archive->friend_getArchivedFileInfo(path);
 	if (info == nullptr)
 		return 1;
+	// Small files (UI clicks, unit voices) must play on the trigger that asked for them — skipping
+	// shifts the sound to its NEXT trigger, which is heard as menu-open playing on menu-close. A
+	// couple of 256K chunks over the LAN is a one-time ~2-frame cost, cached forever after.
+	// ponytail: 512K line; raise/lower if profiling shows first-play hitches or late voices.
+	if (info->m_size <= 512 * 1024)
+		return 1;
 	return GeneralsXEnsureResident(archive->getName().str(), (double)info->m_offset, (double)info->m_size);
 }
 

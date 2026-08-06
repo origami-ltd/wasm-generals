@@ -83,9 +83,16 @@ static File *gxOpenAudioFile(const char *name)
 {
 #if defined(__EMSCRIPTEN__)
 	if (!GeneralsXFileResident(name))
+	{
+		fprintf(stderr, "AUDIO_SKIP %s\n", name);
 		return NULL;
+	}
 #endif
-	return TheFileSystem->openFile(name);
+	File *file = TheFileSystem->openFile(name);
+	// One line per sound the game actually reaches for. The native macOS build prints the same
+	// lines, giving a ground-truth list to diff against the wasm run when sounds go missing.
+	fprintf(stderr, "AUDIO_REQ %s %s\n", name, file ? "ok" : "MISSING");
+	return file;
 }
 
 #ifdef _INTERNAL

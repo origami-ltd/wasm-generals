@@ -103,6 +103,13 @@ let soundMuted = localStorage.getItem("generalsX.soundMuted") === "1";
 
 const runtimeArguments: string[] = bootMode === "fast" ? ["-quickstart", "-noshellmap"] : [];
 if (!soundEnabled) runtimeArguments.push("-noaudio");
+// ?args=-botmatch+... passes engine flags straight through — used by automated parity runs.
+const extraArguments = query.get("args");
+if (extraArguments) {
+  // "|" separates when an argument itself contains spaces (map paths do).
+  const parts = extraArguments.includes("|") ? extraArguments.split("|") : extraArguments.split(" ");
+  runtimeArguments.push(...parts.filter(Boolean));
+}
 
 el<HTMLSelectElement>("boot").value = bootMode;
 el<HTMLSelectElement>("boot").addEventListener("change", (event) => {
@@ -173,6 +180,10 @@ el("firstrun-folder").addEventListener("click", async () => {
   }
 });
 
+// ?assets=1 means the player came to repoint their install — open the picker immediately,
+// before any engine bootstrapping gets a chance to sit in front of it.
+if (query.get("assets") === "1") el("firstrun").hidden = false;
+
 /* ------------------------------------------------------------- letterboxing */
 // JS owns the fit: the engine controls the canvas backing size, which CSS max-% cannot contain.
 function fitCanvas(): void {
@@ -223,6 +234,14 @@ document.addEventListener("pointerlockchange", () => {
   canvas.classList.toggle("pointer-locked", locked);
   if (locked) drawLockedCursor();
   else cursorOverlay.hidden = true;
+  // The browser consumes ESC as the pointer-lock exit, so the engine never sees the key. When the
+  // lock drops while the page still has focus, that WAS an ESC press — hand it to the game so its
+  // own original pause menu opens. Unlocks from alt-tab/blur skip this (hasFocus is false there).
+  if (!locked && document.hasFocus() && !document.hidden && frame.dataset.ready === "true") {
+    for (const type of ["keydown", "keyup"] as const) {
+      canvas.dispatchEvent(new KeyboardEvent(type, { key: "Escape", code: "Escape", bubbles: true }));
+    }
+  }
 });
 canvas.addEventListener("contextmenu", (event) => event.preventDefault());
 canvas.addEventListener("pointerdown", () => {
@@ -230,21 +249,8 @@ canvas.addEventListener("pointerdown", () => {
   if (!document.pointerLockElement && frame.dataset.ready === "true") canvas.requestPointerLock();
 });
 
-/* ------------------------------------------------------------------- pause */
-// Esc cannot pause in a browser: the pointer-lock exit consumes the key before the engine ever
-// sees it, so Esc only releases the mouse. Focus is the pause signal instead — click outside the
-// game surface (or hide the tab) and the sim pauses; click back on the canvas and it resumes.
-// The engine refuses the call in LAN matches, where the other players' simulation marches on.
-function setPaused(paused: boolean): void {
-  module?.ccall?.("GeneralsXSetPaused", "number", ["number"], [paused ? 1 : 0]);
-}
-addEventListener("pointerdown", (event) => {
-  setPaused(!frame.contains(event.target as Node));
-}, { capture: true });
-addEventListener("blur", () => setPaused(true));
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) setPaused(true);
-});
+// No auto-pause: the simulation keeps running whether or not the page has focus — losing focus
+// must never stop a match (a hidden tab's frames are driven by the pump worker below).
 
 /* ------------------------------------------------------------------- sound */
 function setSoundMuted(muted: boolean): void {
@@ -535,6 +541,19 @@ const config: Record<string, unknown> = {
           hasOptions = false;
         }
         if (!hasOptions || query.get("resetOptions") === "1") FS.writeFile(optionsPath, DEFAULT_OPTIONS);
+        // ?opt=Key=Val,Key2=Val2 forces Options.ini entries for this run — debugging tool.
+        const optionOverrides = query.get("opt");
+        if (optionOverrides) {
+          let text = FS.readFile(optionsPath, { encoding: "utf8" });
+          for (const pair of optionOverrides.split(",")) {
+            const [key, value] = pair.split("=");
+            if (!key || value === undefined) continue;
+            const line = `${key} = ${value}`;
+            const pattern = new RegExp(`^${key} = .*$`, "m");
+            text = pattern.test(text) ? text.replace(pattern, line) : `${text}${line}\n`;
+          }
+          FS.writeFile(optionsPath, text);
+        }
         if (localStorage.getItem("generalsX.aspectApply") === "1") {
           const resolution = localStorage.getItem("generalsX.aspect") === "4:3"
             ? "Resolution = 1024 768"
@@ -615,9 +634,7 @@ if (manifest && !manifest.missing) {
 }
 
 play.hidden = false;
-report("Ready", isGuest
-  ? "menu ready — click Play; the rest keeps syncing behind it"
-  : "everything downloaded — click Play to start audio");
+report("Ready", "Runtime downloaded, let's Skirmish");
 play.addEventListener("click", () => {
   play.hidden = true;
   report("Starting engine", "loading game data");

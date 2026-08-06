@@ -69,8 +69,17 @@ EM_JS(Int, GeneralsXWebLanBind, (UnsignedInt ip, UnsignedShort port), {
 		sockets.delete(port);
 	}
 
-	const scheme = globalThis.location.protocol === "https:" ? "wss:" : "ws:";
-	const socket = new WebSocket(scheme + "/" + "/" + globalThis.location.host + "/GeneralsXLan");
+	// Every player must land on the SAME relay instance. Two listeners serve this page (8765 TLS,
+	// 8766 plain-http convenience) and each runs its own relay — following location.host would
+	// split players across relays and their games would never see each other. Pin the TLS relay;
+	// if that socket cannot connect (no cert exception yet), fall back to the page's own origin.
+	const relayUrls = [
+		"wss://" + globalThis.location.hostname + ":8765/GeneralsXLan",
+		(globalThis.location.protocol === "https:" ? "wss://" : "ws://")
+			+ globalThis.location.host + "/GeneralsXLan",
+	];
+	if (relayUrls[0] === relayUrls[1]) relayUrls.pop();
+	const socket = new WebSocket(relayUrls[0]);
 	socket.binaryType = "arraybuffer";
 	const state = { socket, virtualIP, port, incoming: [], outgoing: [], incomingBytes: 0 };
 	sockets.set(port, state);
@@ -90,7 +99,7 @@ EM_JS(Int, GeneralsXWebLanBind, (UnsignedInt ip, UnsignedShort port), {
 		state.outgoing.length = 0;
 		globalThis.generalsXLanStatus = { connected: true, ip: virtualIP, port };
 	});
-	socket.addEventListener("message", (event) => {
+	const onRelayMessage = (event) => {
 		const bytes = new Uint8Array(event.data);
 		if (bytes.length < 7 || bytes[0] !== 2) return;
 		const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -106,11 +115,33 @@ EM_JS(Int, GeneralsXWebLanBind, (UnsignedInt ip, UnsignedShort port), {
 		while (state.incoming.length > 16384 || state.incomingBytes > 32 * 1024 * 1024) {
 			state.incomingBytes -= state.incoming.shift().payload.byteLength;
 		}
-	});
+	};
+	socket.addEventListener("message", onRelayMessage);
+	let opened = false;
+	socket.addEventListener("open", () => { opened = true; });
 	socket.addEventListener("close", () => {
-		if (sockets.get(port) === state) {
-			globalThis.generalsXLanStatus = { connected: false, ip: virtualIP, port };
+		if (sockets.get(port) !== state) return;
+		if (!opened && relayUrls.length > 1) {
+			// Pinned relay unreachable from this page — retry on the page's own origin.
+			const fallback = new WebSocket(relayUrls[1]);
+			fallback.binaryType = "arraybuffer";
+			state.socket = fallback;
+			fallback.addEventListener("open", () => {
+				opened = true;
+				fallback.send(encodeRegistration());
+				for (const message of state.outgoing) fallback.send(message);
+				state.outgoing.length = 0;
+				globalThis.generalsXLanStatus = { connected: true, ip: virtualIP, port };
+			});
+			fallback.addEventListener("message", onRelayMessage);
+			fallback.addEventListener("close", () => {
+				if (sockets.get(port) === state) {
+					globalThis.generalsXLanStatus = { connected: false, ip: virtualIP, port };
+				}
+			});
+			return;
 		}
+		globalThis.generalsXLanStatus = { connected: false, ip: virtualIP, port };
 	});
 	return 0;
 });

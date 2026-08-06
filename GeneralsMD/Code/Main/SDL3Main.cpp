@@ -314,7 +314,12 @@ int main(int argc, char* argv[])
 		#if defined(SAGE_USE_WEBGPU)
 		// GeneralsX @feature Codex 04/08/2026 Bind SDL input and sizing to Emscripten's browser canvas.
 		fprintf(stderr, "INFO: Creating SDL3 browser canvas window...\n");
-		Uint32 windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
+		// GeneralsX @bugfix Codex 06/08/2026 NOT resizable: SDL's browser resize handler rewrites the canvas
+		// backing size to the element's CSS size and republishes it as the window size. With the page
+		// letterboxing the canvas, that made window->w equal the CSS width, so SDL's mouse scale
+		// (window->w / cssWidth) collapsed to 1.0 and clicks landed off by the letterbox scale after any
+		// resize, zoom or fullscreen. The render size belongs to the engine (Options.ini), not to the DOM.
+		Uint32 windowFlags = SDL_WINDOW_HIDDEN;
 		#else
 		// Create SDL3 window with Vulkan support
 		fprintf(stderr, "INFO: Creating SDL3 Vulkan window...\n");

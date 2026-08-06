@@ -6,8 +6,10 @@ SRC="$(cd "$(dirname "$0")/../../.." && pwd)"
 DEST="$HOME/Library/Application Support/GeneralsX/www"
 mkdir -p "$DEST"
 cp "$SRC/scripts/qa/smoke/serve-webgpu.py" "$HOME/Library/Application Support/GeneralsX/serve-webgpu.py"
-rsync -a --delete \
-    "$SRC/build/webgpu/GeneralsMD/GeneralsXZH.html" \
+# GeneralsX @feature Codex 06/08/2026 The page is a Vite + TypeScript app; only the game is wasm.
+(cd "$SRC/web" && npm run build --silent)
+rsync -a "$SRC/web/dist/" "$DEST/"
+rsync -a \
     "$SRC/build/webgpu/GeneralsMD/GeneralsXZH.js" \
     "$SRC/build/webgpu/GeneralsMD/GeneralsXZH.wasm" \
     "$SRC/build/webgpu/GeneralsMD/GeneralsXZH.data" \

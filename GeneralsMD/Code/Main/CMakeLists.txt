@@ -46,14 +46,14 @@ if(SAGE_USE_WEBGPU)
     target_link_options(z_generals PRIVATE
         "LINKER:--error-limit=0"
         "-sSUPPORT_LONGJMP=emscripten"
-        # GeneralsX @feature Codex 04/08/2026 Use one localized browser shell around the game canvas.
-        --shell-file
-        "${CMAKE_SOURCE_DIR}/Core/GameEngineDevice/Source/WebGPUDevice/GeneralsXWebShell.html"
+        # GeneralsX @feature Codex 06/08/2026 Emit a module only: the page around the game is a TypeScript +
+        # Tailwind app in web/, so emscripten must not generate (or own) any HTML.
+        "-sMODULARIZE=1"
+        "-sEXPORT_ES6=1"
+        "-sEXPORT_NAME=createGeneralsX"
+        "-sEXPORTED_RUNTIME_METHODS=FS,IDBFS,addRunDependency,removeRunDependency,callMain"
     )
-    set_property(TARGET z_generals APPEND PROPERTY LINK_DEPENDS
-        "${CMAKE_SOURCE_DIR}/Core/GameEngineDevice/Source/WebGPUDevice/GeneralsXWebShell.html"
-    )
-    set_target_properties(z_generals PROPERTIES SUFFIX ".html")
+    set_target_properties(z_generals PROPERTIES SUFFIX ".js")
 
     set(GENERALSX_WEB_FONT_FILE "" CACHE FILEPATH "Font file preloaded by the browser build")
     if(GENERALSX_WEB_FONT_FILE)

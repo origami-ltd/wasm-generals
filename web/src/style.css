@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+/* Jarvis HUD palette: near-black blue, cyan primary with glow, orange accent. */
+@theme {
+    --color-hud-bg: hsl(210 100% 2%);
+    --color-hud-surface: hsl(210 100% 3%);
+    --color-hud-raised: hsl(210 80% 5%);
+    --color-hud-border: hsl(188 100% 20%);
+    --color-hud-fg: hsl(180 100% 90%);
+    --color-hud-muted: hsl(188 40% 60%);
+    --color-hud-accent: hsl(188 100% 50%);
+    --color-hud-warm: hsl(33 100% 50%);
+    --color-hud-ready: hsl(150 100% 45%);
+    --color-hud-error: hsl(0 100% 60%);
+    --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@layer components {
+    /* Angled cut on the bottom-right corner, drawn as a 1px border via a clipped ::before. */
+    .hud-cut {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        background: var(--color-hud-border);
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+    }
+
+    .hud-cut::before {
+        position: absolute;
+        z-index: -1;
+        inset: 1px;
+        clip-path: inherit;
+        background: var(--hud-cut-surface, var(--color-hud-raised));
+        content: "";
+    }
+
+    .hud-button {
+        @apply min-h-11 cursor-pointer px-4 text-[13px] uppercase tracking-[0.1em] text-hud-accent;
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        border: 0;
+        background: var(--color-hud-border);
+        clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+        box-shadow: 0 0 10px hsl(188 100% 50% / .15), inset 0 0 15px hsl(188 100% 50% / .08);
+    }
+
+    .hud-button::before {
+        position: absolute;
+        z-index: -1;
+        inset: 1px;
+        clip-path: inherit;
+        background: var(--color-hud-raised);
+        content: "";
+    }
+
+    .hud-button:hover {
+        background: var(--color-hud-accent);
+        color: var(--color-hud-fg);
+    }
+
+    .hud-select {
+        @apply min-h-11 border border-hud-border bg-hud-raised px-3 text-hud-fg;
+    }
+}
+
+body {
+    background-image:
+        radial-gradient(ellipse at 50% 0%, hsl(188 100% 50% / .05), transparent 60%),
+        repeating-linear-gradient(0deg, transparent 0 2px, hsl(188 100% 50% / .015) 2px 4px);
+}
+
+/* The engine publishes its cursor as an inline CSS cursor; hide it only while pointer-locked,
+   when the page draws that same image itself (the browser hides the OS cursor under lock). */
+canvas.pointer-locked {
+    cursor: none !important;
+}

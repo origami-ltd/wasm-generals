@@ -180,6 +180,36 @@ extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXMouseY()
 // flags only gate NEW events, so muting left the looping music audible and unmuting never brought
 // anything back. A volume write reaches every playing voice via m_volumeHasChanged, and the system
 // (options) volumes stay untouched — unmute restores exactly what the player configured.
+#include "Common/ArchiveFileSystem.h"
+#include "Common/ArchiveFile.h"
+#include "Common/LocalFileSystem.h"
+
+EM_JS(int, GeneralsXEnsureResident, (const char *big, double offset, double size), {
+	const ensure = globalThis.__gxEnsure;
+	return ensure ? ensure(UTF8ToString(big), offset, size) : 1;
+});
+
+// 1 = safe to read this file synchronously (bytes resident, loose file, unknown file, or a
+// blocking-tolerant moment: boot, frontend, match load screen).
+// 0 = archive bytes still crossing the network — a background fetch was kicked, retry later.
+extern "C" int GeneralsXFileResident(const char *name)
+{
+	if (TheGameLogic == nullptr || !TheGameLogic->isInGame() || TheGameLogic->isLoadingMap())
+		return 1;
+	if (name == nullptr || *name == '\0' || TheArchiveFileSystem == nullptr)
+		return 1;
+	if (TheLocalFileSystem != nullptr && TheLocalFileSystem->doesFileExist(name))
+		return 1; // loose file on MEMFS: local read, no network involved
+	AsciiString path(name);
+	ArchiveFile *archive = TheArchiveFileSystem->getArchiveFile(path);
+	if (archive == nullptr)
+		return 1;
+	const ArchivedFileInfo *info = archive->friend_getArchivedFileInfo(path);
+	if (info == nullptr)
+		return 1;
+	return GeneralsXEnsureResident(archive->getName().str(), (double)info->m_offset, (double)info->m_size);
+}
+
 extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXSetAudioMuted(Int muted)
 {
 	if (TheAudio == nullptr)
@@ -481,11 +511,29 @@ void SDL3GameEngine::execute(void)
 }
 
 #if defined(__EMSCRIPTEN__)
+// Chrome throttles window timers in hidden tabs (down to once a minute), which freezes the main
+// loop and desyncs LAN peers. The page drives frames from a worker while hidden via this export.
+// The guard makes overlapping entry impossible: executeFrame can suspend in emscripten_sleep,
+// and a pump arriving during that suspension must be dropped, not run reentrantly.
+static void* s_gxPumpEngine = nullptr;
+static Bool s_gxInFrame = FALSE;
+
+extern "C" EMSCRIPTEN_KEEPALIVE void GeneralsXPump(void)
+{
+	if (s_gxPumpEngine != nullptr)
+		SDL3GameEngine::browserFrame(s_gxPumpEngine);
+}
+
 void SDL3GameEngine::browserFrame(void* enginePointer)
 {
+	if (s_gxInFrame)
+		return;
+	s_gxInFrame = TRUE;
+	s_gxPumpEngine = enginePointer;
 	SDL3GameEngine* engine = static_cast<SDL3GameEngine*>(enginePointer);
 	if (engine->getQuitting())
 	{
+		s_gxInFrame = FALSE;
 		emscripten_cancel_main_loop();
 		return;
 	}
@@ -513,6 +561,7 @@ void SDL3GameEngine::browserFrame(void* enginePointer)
 		engine->executeFrame();
 	}
 	TheGameClient->setDrawingEnabled(TRUE);
+	s_gxInFrame = FALSE;
 }
 #endif
 

@@ -71,6 +71,23 @@ extern "C" {
 }
 #endif
 
+#if defined(__EMSCRIPTEN__)
+extern "C" int GeneralsXFileResident(const char *name);
+#endif
+
+// A sound whose bytes are still crossing the network must be skipped, not decoded: the archive
+// read would hand the decoder zero-filled buffers and that silent decode gets cached forever.
+// Skipping leaves no cache entry, the residency probe kicks the download, and the next trigger
+// of the same sound plays for real.
+static File *gxOpenAudioFile(const char *name)
+{
+#if defined(__EMSCRIPTEN__)
+	if (!GeneralsXFileResident(name))
+		return NULL;
+#endif
+	return TheFileSystem->openFile(name);
+}
+
 #ifdef _INTERNAL
 //#pragma optimize("", off)
 #endif
@@ -351,7 +368,7 @@ void MiniAudioManager::playAudioEvent(AudioEventRTS *event)
 	}
 
 	#ifdef RTS_HAS_FFMPEG
-	File *file = TheFileSystem->openFile(fileToPlay.str());
+	File *file = gxOpenAudioFile(fileToPlay.str());
 	if (!file) {
 		DEBUG_LOG(("MiniAudio: Failed to open file: %s\n", fileToPlay.str()));
 		releasePlayingAudio(audio);
@@ -1589,7 +1606,7 @@ struct VFSFileHandle { File *file; };
 static ma_result vfsFileOpen(ma_vfs *pVFS, const char *filename, ma_uint32 mode, ma_vfs_file *pFile)
 {
 	VFSFileHandle *handle = new VFSFileHandle;
-	handle->file = TheFileSystem->openFile(filename);
+	handle->file = gxOpenAudioFile(filename);
 	if (!handle->file) {
 		delete handle;
 		return MA_ERROR;

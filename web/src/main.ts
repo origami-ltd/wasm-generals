@@ -25,18 +25,13 @@ let shipChain: Promise<unknown> = Promise.resolve();
 let menuPending = false;
 let menuUp = false;
 let loadActiveAt = 0; // last GENERALSX_LOAD_PROGRESS: the engine is inside a load right now
-let matchLoadPercent = 0;
 
 /** The engine narrates its boot; mirror that into the status line and only call it Running when
     the shell reports the main menu is up. Logic frames tick well before anything is drawn. */
 function trackBoot(line: string): void {
-  const progress = /^GENERALSX_LOAD_PROGRESS (\d+) (\d)/.exec(line);
-  if (progress) {
-    loadActiveAt = Date.now();
-    matchLoadPercent = Math.min(100, Number(progress[1]));
-    if (progress[2] === "1") holoShow(); // a real load screen is up, not the shell-map boot
-  }
-  if (line.startsWith("GENERALSX_LOAD_DONE")) holoHide();
+  // The match load screen itself is the game's own (teams, factions, map) — the page only uses
+  // these markers to know a load is running, so it stops auto-resuming the silenced audio.
+  if (line.startsWith("GENERALSX_LOAD_PROGRESS")) loadActiveAt = Date.now();
   if (menuUp) return;
   if (line.includes("MainMenu.wnd")) menuPending = true;
   if (menuPending && line.includes("Push completed")) {
@@ -338,13 +333,8 @@ const holo = el("holo");
 let holoTimer: ReturnType<typeof setInterval> | undefined;
 
 function holoShow(): void {
-  // Keyed to the hold flag, not the download bookkeeping: the overlay is up exactly while the
-  // engine is holding the match for the sync.
-  const holding = (globalThis as unknown as { __gxHoldMatch?: number }).__gxHoldMatch === 1;
-  if (!isGuest || !holding || !holo.hidden) return;
+  if (!holo.hidden) return;
   holo.hidden = false;
-  // The ring animations are compositor-driven and never stall; these numbers repaint on the
-  // yields the engine takes between load steps.
   holoTimer = setInterval(() => {
     if (!guestBulk) return;
     const ratio = guestBulk.total ? guestBulk.done / guestBulk.total : 0;
@@ -352,7 +342,6 @@ function holoShow(): void {
     el("holo-mb").textContent =
       `${(guestBulk.done / 2 ** 20).toFixed(0)} / ${(guestBulk.total / 2 ** 20).toFixed(0)} MB`;
     el("holo-file").textContent = guestBulk.finished ? "arsenal complete" : guestBulk.file;
-    el("holo-map").textContent = `map load ${matchLoadPercent}%`;
   }, 250);
 }
 
@@ -362,36 +351,41 @@ function holoHide(): void {
   clearInterval(holoTimer);
 }
 
-/** The whole game, pulled while the guest sits in the menu and on through the match load screen.
-    Menu art and the full sound set go into memory, the bulk into the browser's disk cache. The
-    engine keeps the load screen up until this lands — that is the no-stutter guarantee. */
-function guestPreload(entries: { name: string; size: number }[]): void {
+/** The whole game, pulled behind the hologram BEFORE the game opens: the guest waits here once,
+    then plays with everything local. Menu art and the full sound set go into memory, the bulk
+    into the browser's disk cache. In-game loads then use the game's own load screen untouched.
+    The engine-side hold stays raised while this runs as a belt-and-braces guard, but in this flow
+    the download always lands before the engine even boots. */
+async function guestPreload(entries: { name: string; size: number }[]): Promise<void> {
   const warmSet = entries.filter((entry) => MENU_ARCHIVES.test(entry.name));
   const primeSet = entries.filter((entry) => !MENU_ARCHIVES.test(entry.name));
   const warmTotal = warmSet.reduce((sum, entry) => sum + entry.size, 0);
   const total = entries.reduce((sum, entry) => sum + entry.size, 0);
   guestBulk = { done: 0, total, file: "contacting host…", finished: false };
   setHoldMatch(true);
+  holoShow();
   const seen = (base: number) => (done: number, name: string): void => {
     if (!guestBulk) return;
     guestBulk.done = base + done;
     guestBulk.file = name;
-    report("", `Syncing game · ${name} · ${((base + done) / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
+    report("Downloading", `${name} · ${((base + done) / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
       (base + done) / total);
   };
-  void streamer
-    .warm(warmSet as never, Number.MAX_SAFE_INTEGER, seen(0))
-    .then(() => streamer.prime(primeSet as never, seen(warmTotal)))
-    .catch(() => log("Guest sync stopped early — archives stream on demand instead."))
-    .finally(() => {
-      if (guestBulk) {
-        guestBulk.done = guestBulk.total;
-        guestBulk.finished = true;
-      }
-      setHoldMatch(false);
-      report("", "");
-      log("Full game synced from the host.");
-    });
+  try {
+    await streamer.warm(warmSet as never, Number.MAX_SAFE_INTEGER, seen(0));
+    await streamer.prime(primeSet as never, seen(warmTotal));
+    log("Full game synced from the host.");
+  } catch {
+    log("Guest sync stopped early — archives stream on demand instead.");
+  } finally {
+    if (guestBulk) {
+      guestBulk.done = guestBulk.total;
+      guestBulk.finished = true;
+    }
+    setHoldMatch(false);
+    holoHide();
+    report("", "");
+  }
 }
 
 // Chrome suspends an AudioContext created without user activation; miniaudio keeps feeding it and
@@ -603,22 +597,19 @@ await preload("/GeneralsXZH.data", "startup files");
 const manifest = await loadManifest().catch(() => null);
 if (manifest && !manifest.missing) {
   lastManifest = manifest.entries;
-  // Local host: everything lands before Play — disk-speed, zero stutter. A guest would wait
-  // minutes here instead, so Play unlocks now and the full pull runs behind the menu; the engine
-  // then holds the match load screen open until it lands.
-  if (!isGuest) await preloadEverything(manifest.entries);
+  // Everything lands before the game opens, for host and guest alike — mid-match network reads
+  // are the stutter. The host sees the plain bar (disk-speed, seconds); the guest waits once
+  // behind the hologram while the whole game crosses the LAN. In-game loads afterwards use the
+  // game's own load screen, teams and all.
+  if (isGuest) await guestPreload(manifest.entries);
+  else await preloadEverything(manifest.entries);
 }
 
 play.hidden = false;
-report("Ready", isGuest
-  ? "click Play — the game syncs from your host while you set up the match"
-  : "everything downloaded — click Play to start audio");
+report("Ready", "everything downloaded — click Play to start audio");
 play.addEventListener("click", () => {
   play.hidden = true;
   report("Starting engine", "loading game data");
-  if (isGuest && lastManifest && !lastManifest.some((entry) => "handle" in entry)) {
-    guestPreload(lastManifest);
-  }
   void factory(config);
   // The click is the user activation Chrome demands; sticky activation keeps later resumes legal.
   // Resume forever — Full Start creates its audio device long after the old 30-second settle

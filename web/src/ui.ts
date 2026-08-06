@@ -87,8 +87,7 @@ export function render(root: HTMLElement): void {
               <div class="holo-caption">
                 <div class="holo-title">Syncing battlefield data</div>
                 <div id="holo-file" class="holo-file">&nbsp;</div>
-                <div id="holo-map" class="holo-map">&nbsp;</div>
-                <div class="holo-note">Streaming the full game from your host — the match starts the moment it lands.</div>
+                <div class="holo-note">Downloading the full game from your host — one wait, then every match runs clean.</div>
               </div>
             </div>
             <div class="holo-scan"></div>

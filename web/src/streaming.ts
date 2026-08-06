@@ -160,6 +160,37 @@ export async function loadManifest(): Promise<AssetManifest> {
   return (await response.json()) as AssetManifest;
 }
 
+/** Walk a picked directory looking for the two archive sets, wherever they sit inside it. */
+export async function findArchiveDirs(
+  root: FileSystemDirectoryHandle,
+  depth = 3,
+): Promise<Map<string, FileSystemDirectoryHandle>> {
+  const found = new Map<string, FileSystemDirectoryHandle>();
+  const visit = async (directory: FileSystemDirectoryHandle, level: number): Promise<void> => {
+    let zeroHour = false;
+    let base = false;
+    const children: FileSystemDirectoryHandle[] = [];
+    for await (const [name, handle] of directory.entries()) {
+      if (handle.kind === "directory") {
+        children.push(handle as FileSystemDirectoryHandle);
+      } else if (name.toLowerCase().endsWith(".big")) {
+        // ZH ships *ZH.big archives; the base game does not. That is the whole discriminator.
+        if (/zh\.big$/i.test(name)) zeroHour = true;
+        else base = true;
+      }
+    }
+    if (zeroHour && !found.has("GeneralsZH")) found.set("GeneralsZH", directory);
+    else if (base && !zeroHour && !found.has("Generals")) found.set("Generals", directory);
+    if (found.size === 2 || level >= depth) return;
+    for (const child of children) {
+      await visit(child, level + 1);
+      if (found.size === 2) return;
+    }
+  };
+  await visit(root, 0);
+  return found;
+}
+
 /** Archives from the folders the player picked, read locally with no server involvement. */
 export async function localArchives(): Promise<ArchiveEntry[]> {
   const database = await new Promise<IDBDatabase>((resolve, reject) => {

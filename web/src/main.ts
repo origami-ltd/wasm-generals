@@ -1,5 +1,5 @@
 import "./style.css";
-import { ArchiveStreamer, loadManifest, localArchives } from "./streaming";
+import { ArchiveStreamer, findArchiveDirs, loadManifest, localArchives } from "./streaming";
 import { el, render } from "./ui";
 import type { EmscriptenModule, ModuleFactory } from "./types";
 
@@ -92,15 +92,21 @@ el("firstrun-info").addEventListener("click", () => {
 });
 el("firstrun-folder").addEventListener("click", async () => {
   const note = el("firstrun-folder-note");
-  const picker = (window as unknown as { showDirectoryPicker?: (o: object) => Promise<unknown> }).showDirectoryPicker;
+  const picker = (window as unknown as {
+    showDirectoryPicker?: (o: object) => Promise<FileSystemDirectoryHandle>;
+  }).showDirectoryPicker;
   if (!picker) {
     note.textContent = "This browser cannot pick folders — use Chrome, or the Steam option.";
     return;
   }
   try {
-    const zeroHour = await picker({ id: "generalsx-zerohour", mode: "read" });
-    note.textContent = "Now select the base Generals folder…";
-    const generals = await picker({ id: "generalsx-generals", mode: "read" });
+    const root = await picker({ id: "generalsx-install", mode: "read" });
+    note.textContent = "Scanning…";
+    const found = await findArchiveDirs(root);
+    if (!found.has("GeneralsZH")) {
+      note.textContent = "No Zero Hour archives (*ZH.big) under that folder — pick the install folder.";
+      return;
+    }
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open("generalsx", 1);
       request.onupgradeneeded = () => request.result.createObjectStore("handles");
@@ -108,10 +114,9 @@ el("firstrun-folder").addEventListener("click", async () => {
       request.onerror = () => reject(request.error);
     });
     const store = database.transaction("handles", "readwrite").objectStore("handles");
-    store.put(zeroHour, "GeneralsZH");
-    store.put(generals, "Generals");
-    note.textContent = "Folders saved. Reloading…";
-    setTimeout(() => location.reload(), 600);
+    for (const [key, handle] of found) store.put(handle, key);
+    note.textContent = `Found ${[...found.keys()].join(" + ")}. Reloading…`;
+    setTimeout(() => location.reload(), 700);
   } catch (error) {
     console.debug("folder selection cancelled", error);
     note.textContent = "";

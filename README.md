@@ -69,18 +69,18 @@ The complete Zero Hour game compiled with Emscripten, no features cut:
 - **The game's own load screens, pause menu and credits** — ESC opens the original pause menu
 - A native macOS build (MoltenVK) from the same tree, used as the behavioral reference
 
-## 🤝 How to Contribute
+## How to Contribute
 
 1. Check [current issues](https://github.com/origami-ltd/wasm-generals/issues) and open a discussion
 2. Build from source with the steps above
 3. Submit issues or pull requests with detailed information
 
-## 💖 Support This Project
+## Support This Project
 
 - **[Buy me a coffee](https://buymeacoffee.com/ebellumat)** — supports the wasm.com.br initiative
 - **[Sponsor on GitHub](https://github.com/sponsors/fbraz3)** — supports GeneralsX, the base this port stands on
 
-## 📄 License
+## License
 
 **GPL-3.0**, inherited from the [GeneralsX](https://github.com/fbraz3/GeneralsX) base and EA's
 official source release of Generals ([LICENSE.md](LICENSE.md)). Author's note: I would rather
@@ -89,7 +89,7 @@ ship this MIT, but I can't override such an archaic license.
 EA has not endorsed and does not support this product. All trademarks are the property of their
 respective owners.
 
-## 🙏 Special Thanks
+## Special Thanks
 
 - **[fbraz3](https://github.com/fbraz3)** for [GeneralsX](https://github.com/fbraz3/GeneralsX),
   the cross-platform base this port is built on

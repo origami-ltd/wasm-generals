@@ -1136,7 +1136,18 @@ void GameLogic::updateLoadProgress( Int progress )
 {
 
 	if( m_loadScreen )
+	{
 		m_loadScreen->update( progress );
+#if defined(__EMSCRIPTEN__)
+		// Silence first: yielding lets the audio thread run again, and with the engine mid-load it
+		// would replay the last rendered quantum — the click that opened the match, stuttering.
+		EM_ASM({ if (window.miniaudio) window.miniaudio.devices.forEach(function(d) { if (d && d.webaudio && d.webaudio.state === "running") d.webaudio.suspend(); }); });
+		// The browser only composites when the task yields, so every frame drawn during the load was
+		// queued and discarded: the player saw the old screen until the load finished. Yield here so
+		// the load screen actually appears and its bar moves. ASYNCIFY makes the sleep resumable.
+		emscripten_sleep(0);
+#endif
+	}
 
 	if (TheGameEngine->getQuitting() || m_quitToDesktopAfterMatch)
 	{

@@ -13,6 +13,7 @@ import type { EmscriptenFS, EmscriptenModule } from "./types";
 // thrashed and pulled ~35 GB over ~9000 requests. Smaller blocks, far more of them cached.
 const CHUNK_SIZE = 256 * 1024;
 const CACHE_LIMIT = 384 * 1024 * 1024;
+const READAHEAD = 8; // chunks pulled per miss
 
 export interface ArchiveEntry {
   mount: string;
@@ -58,6 +59,7 @@ const workerSource = `
 export class ArchiveStreamer {
   private readonly cache = new Map<string, Uint8Array>();
   private cached = 0;
+  private readonly nextIndex = new Map<string, number>();
   private worker: Worker | null = null;
   private buffer: SharedArrayBuffer | null = null;
   /** Resolves once the worker is alive. It must be running before the engine ever spin-waits:
@@ -70,11 +72,11 @@ export class ArchiveStreamer {
       return;
     }
     this.worker = new Worker(URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" })));
-    this.buffer = new SharedArrayBuffer(CHUNK_SIZE + 8);
+    this.buffer = new SharedArrayBuffer(CHUNK_SIZE * READAHEAD + 8);
     this.ready = new Promise((resolve) => this.worker?.addEventListener("message", resolve, { once: true }));
   }
 
-  private fetchChunkSync(url: string, index: number, handle?: FileSystemFileHandle): Uint8Array {
+  private fetchChunkSync(url: string, index: number, handle?: FileSystemFileHandle, chunks = 1): Uint8Array {
     if (!this.worker || !this.buffer) {
       this.onError("SharedArrayBuffer unavailable: archives cannot stream.");
       return new Uint8Array(0);
@@ -86,7 +88,7 @@ export class ArchiveStreamer {
       url: handle ? "" : new URL(url, location.href).href,
       handle,
       start,
-      end: start + CHUNK_SIZE - 1,
+      end: start + CHUNK_SIZE * chunks - 1,
       sab: this.buffer,
     });
     const deadline = Date.now() + 60_000;
@@ -111,9 +113,20 @@ export class ArchiveStreamer {
       this.cache.set(key, cached);
       return cached;
     }
-    const chunk = this.fetchChunkSync(url, index, handle);
-    this.cache.set(key, chunk);
-    this.cached += chunk.length;
+    // Read ahead only while the file is being read sequentially. Doing it blindly pulled 8x the
+    // bytes for scattered reads, and the transfer — not the request count — is the bottleneck.
+    const sequential = this.nextIndex.get(url) === index;
+    const span = this.fetchChunkSync(url, index, handle, sequential ? READAHEAD : 1);
+    this.nextIndex.set(url, index + span.length / CHUNK_SIZE);
+    for (let offset = 0; offset < span.length; offset += CHUNK_SIZE) {
+      const part = span.subarray(offset, Math.min(offset + CHUNK_SIZE, span.length));
+      const partKey = `${url}#${index + offset / CHUNK_SIZE}`;
+      if (!this.cache.has(partKey)) {
+        this.cache.set(partKey, part);
+        this.cached += part.length;
+      }
+    }
+    const chunk = this.cache.get(key) ?? span.subarray(0, CHUNK_SIZE);
     while (this.cached > CACHE_LIMIT && this.cache.size > 1) {
       const oldest = this.cache.keys().next().value as string;
       this.cached -= this.cache.get(oldest)?.length ?? 0;

@@ -207,19 +207,26 @@ const LAN_NAMES = [
   "TakingFire", "ChargeTheAttack", "ScudLaunch", "AirForceOne", "Overlord", "Toxin",
 ];
 
-/** First free name, so tabs opened in order read emscripten, wasm, Reporting… */
+/** Next free name for this browser profile. The starting point is random per profile, so two
+    separate profiles (or two machines) do not both open on "emscripten" and hide each other. */
 function nextLanClient(): number {
+  let offset = Number(localStorage.getItem("generalsX.lanOffset"));
+  if (!offset) {
+    offset = Math.floor(Math.random() * (LAN_NAMES.length - 1)) + 1;
+    localStorage.setItem("generalsX.lanOffset", String(offset));
+  }
   const used = new Set(
     (localStorage.getItem("generalsX.lanUsed") ?? "").split(",").filter(Boolean).map(Number),
   );
-  for (let index = 1; index < LAN_NAMES.length; index += 1) {
+  for (let step = 0; step < LAN_NAMES.length - 1; step += 1) {
+    const index = ((offset - 1 + step) % (LAN_NAMES.length - 1)) + 1;
     if (!used.has(index)) {
       used.add(index);
       localStorage.setItem("generalsX.lanUsed", [...used].join(","));
       return index;
     }
   }
-  return Math.floor(Math.random() * 254) + 1;
+  return Math.floor(Math.random() * (LAN_NAMES.length - 1)) + 1;
 }
 
 const streamer = new ArchiveStreamer(log);
@@ -319,6 +326,7 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
   const stored = sessionStorage.getItem("generalsX.lanClient");
   const lanClient = Number(query.get("lanClient") ?? stored ?? 0) || nextLanClient();
   sessionStorage.setItem("generalsX.lanClient", String(lanClient));
+  el("share").hidden = false;
   const label = LAN_NAMES[lanClient] ?? `Player${lanClient}`;
   const nameLan = setInterval(() => {
     if (module?.ccall?.("GeneralsXLanSetName", "number", ["string"], [label])) clearInterval(nameLan);

@@ -8,6 +8,7 @@ mkdir -p "$DEST"
 cp "$SRC/scripts/qa/smoke/serve-webgpu.py" "$HOME/Library/Application Support/GeneralsX/serve-webgpu.py"
 # GeneralsX @feature Codex 06/08/2026 The page is a Vite + TypeScript app; only the game is wasm.
 (cd "$SRC/web" && npm run build --silent)
+rm -rf "$DEST/assets"   # hashed bundles pile up otherwise
 rsync -a "$SRC/web/dist/" "$DEST/"
 rsync -a \
     "$SRC/build/webgpu/GeneralsMD/GeneralsXZH.js" \

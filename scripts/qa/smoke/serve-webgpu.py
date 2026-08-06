@@ -88,6 +88,7 @@ class LanRelay:
 
 LAN_RELAY = LanRelay()
 
+TLS_PORT = 8765  # the listener started with --cert; the plain one is only for local convenience
 CONFIG_DIR = Path.home() / "Library" / "Application Support" / "GeneralsX"
 
 # GeneralsX @build Codex 04/08/2026 Provide deterministic local browser isolation.
@@ -153,8 +154,9 @@ document.getElementById("log").textContent =
                 address = "127.0.0.1"
             finally:
                 probe.close()
-            scheme = "https" if isinstance(getattr(self.connection, "context", None), object) and hasattr(self.connection, "cipher") else "http"
-            body = json.dumps({"url": f"{scheme}://{address}:{self.server.server_address[1]}/"}).encode()
+            # Always hand out https: guests need a secure context for SharedArrayBuffer, so the plain
+            # listener would give them a page that can never stream.
+            body = json.dumps({"url": f"https://{address}:{TLS_PORT}/"}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))

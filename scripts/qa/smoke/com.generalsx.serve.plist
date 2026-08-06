@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.generalsx.serve</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/ebellumat/Library/Application Support/GeneralsX/serve-webgpu.py</string>
+        <string>/Users/ebellumat/Library/Application Support/GeneralsX/www</string>
+        <string>--port</string>
+        <string>8765</string>
+        <string>--bind</string>
+        <string>0.0.0.0</string>
+        <string>--cert</string>
+        <string>/Users/ebellumat/Library/Application Support/GeneralsX/serve.crt</string>
+        <string>--key</string>
+        <string>/Users/ebellumat/Library/Application Support/GeneralsX/serve.key</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/tmp/generalsx-serve.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/generalsx-serve.log</string>
+</dict>
+</plist>

@@ -251,6 +251,70 @@
             text-align: center;
         }
 
+        .firstrun-panel {
+            max-width: 780px;
+            text-align: left;
+        }
+
+        .firstrun-panel code {
+            color: var(--gx-accent-warm);
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .firstrun-lead {
+            margin-bottom: 18px;
+        }
+
+        .firstrun-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .firstrun-option {
+            padding: 16px;
+            border: 1px solid var(--gx-border);
+            background: hsl(210 100% 4%);
+        }
+
+        .firstrun-option h3 {
+            margin: 0 0 8px;
+            color: var(--gx-accent);
+            font-size: 14px;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .info-badge {
+            min-height: 20px;
+            width: 20px;
+            margin-left: 6px;
+            padding: 0;
+            border-radius: 50%;
+            clip-path: none;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .firstrun-note {
+            min-height: 1em;
+            color: var(--gx-accent-warm);
+            font-size: 12px;
+        }
+
+        .firstrun-info-panel {
+            margin-top: 16px;
+            padding: 14px;
+            border-left: 3px solid var(--gx-accent);
+            background: hsl(210 100% 4%);
+            font-size: 12px;
+        }
+
+        .firstrun-info-panel[hidden] {
+            display: none;
+        }
+
         .steam-gate-panel h2 {
             margin: 0 0 10px;
             color: var(--gx-accent);
@@ -478,6 +542,7 @@
         </div>
         <div class="header-controls">
             <span id="steam-chip" class="steam-chip" hidden></span>
+            <button id="clear-data" type="button" title="Clear saved settings and ownership, then reload">Reset</button>
             <label class="boot-control">
                 <span data-copy="aspect"></span>
                 <select id="aspect-mode">
@@ -511,6 +576,43 @@
         <section class="canvas-shell" id="canvas-shell" data-ready="false">
             <canvas id="canvas" tabindex="0"></canvas>
             <img id="cursor-overlay" class="cursor-overlay" alt="" hidden>
+            <div id="firstrun-gate" class="steam-gate" hidden>
+                <div class="steam-gate-panel firstrun-panel">
+                    <h2>Prove you own the game</h2>
+                    <p class="firstrun-lead">GeneralsX runs your own copy of <strong>Command &amp; Conquer Generals —
+                       Zero Hour</strong>. Choose one:</p>
+                    <div class="firstrun-options">
+                        <div class="firstrun-option">
+                            <h3>1 · Sign in through Steam</h3>
+                            <p>Verifies ownership on your Steam account. Nothing is downloaded.</p>
+                            <button id="firstrun-steam" type="button">Sign in through Steam</button>
+                            <p class="firstrun-note" id="firstrun-steam-note"></p>
+                        </div>
+                        <div class="firstrun-option">
+                            <h3>2 · Select your game folder
+                                <button class="info-badge" type="button" id="firstrun-info"
+                                        aria-label="Where to find the game folder">i</button>
+                            </h3>
+                            <p>Point the browser at your installed copy. The files stay on your machine.</p>
+                            <button id="firstrun-folder" type="button">Select game folder</button>
+                            <p class="firstrun-note" id="firstrun-folder-note"></p>
+                        </div>
+                    </div>
+                    <div class="firstrun-info-panel" id="firstrun-info-panel" hidden>
+                        <p>If Steam is installed in the default location on drive C:</p>
+                        <p><strong>Command &amp; Conquer: Generals</strong><br>
+                           <code>C:\\Program Files (x86)\\Steam\\steamapps\\common\\Command and Conquer Generals\\</code></p>
+                        <p><strong>Generals: Zero Hour</strong><br>
+                           <code>C:\\Program Files (x86)\\Steam\\steamapps\\common\\Command &amp; Conquer Generals - Zero Hour\\</code></p>
+                        <p>The main executable is <code>Generals.exe</code>. To open the folder directly:
+                           Steam → Library → right-click the game → Manage → Browse local files.</p>
+                        <p>On macOS/Linux, pick the folder that contains the game's <code>.big</code> archives
+                           (<code>INIZH.big</code>, <code>TexturesZH.big</code>, <code>AudioZH.big</code>…).
+                           Select the <strong>Zero Hour</strong> folder; you will be asked for the base
+                           <strong>Generals</strong> folder next.</p>
+                    </div>
+                </div>
+            </div>
             <div id="steam-gate" class="steam-gate" hidden>
                 <div class="steam-gate-panel">
                     <h2 data-copy="steamTitle"></h2>
@@ -619,10 +721,11 @@
         // steps logic in the browser (black screen). Opt in with ?sound=1 until that engine bug is fixed.
         // Mute goes through the engine's own audio manager; NEVER wrap window.AudioContext here.
         const soundEnabled = runtimeQuery.get("sound") !== "0";
-        let soundMuted = false;
+        let soundMuted = localStorage.getItem("generalsX.soundMuted") === "1";
 
         function setSoundMuted(muted) {
             soundMuted = muted;
+            localStorage.setItem("generalsX.soundMuted", muted ? "1" : "0");
             Module._GeneralsXSetAudioMuted?.(muted ? 1 : 0);
             for (const button of document.querySelectorAll("#sound")) {
                 button.dataset.copy = muted ? "soundOff" : "soundOn";
@@ -975,6 +1078,48 @@
             window.location.reload();
         });
 
+        // GeneralsX @feature Codex 06/08/2026 Reset: wipe local settings + the Steam session cookie so the
+        // first-run ownership flow can be exercised from scratch.
+        document.getElementById("clear-data").addEventListener("click", () => {
+            localStorage.clear();
+            document.cookie = "gxsteam=; Path=/; Max-Age=0";
+            indexedDB.deleteDatabase("generalsx");
+            window.location.reload();
+        });
+
+        document.getElementById("firstrun-steam").addEventListener("click", () => {
+            window.location.href = "/GeneralsXSteamLogin";
+        });
+        document.getElementById("firstrun-info").addEventListener("click", () => {
+            const info = document.getElementById("firstrun-info-panel");
+            info.hidden = !info.hidden;
+        });
+        document.getElementById("firstrun-folder").addEventListener("click", async () => {
+            const note = document.getElementById("firstrun-folder-note");
+            if (!window.showDirectoryPicker) {
+                note.textContent = "This browser cannot pick folders. Use Chrome, or the Steam option.";
+                return;
+            }
+            try {
+                const zeroHour = await window.showDirectoryPicker({ id: "generalsx-zerohour", mode: "read" });
+                note.textContent = "Now select the base Generals folder…";
+                const generals = await window.showDirectoryPicker({ id: "generalsx-generals", mode: "read" });
+                const database = await new Promise((resolve, reject) => {
+                    const request = indexedDB.open("generalsx", 1);
+                    request.onupgradeneeded = () => request.result.createObjectStore("handles");
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+                const store = database.transaction("handles", "readwrite").objectStore("handles");
+                store.put(zeroHour, "GeneralsZH");
+                store.put(generals, "Generals");
+                note.textContent = "Folders saved. Reloading…";
+                window.setTimeout(() => window.location.reload(), 600);
+            } catch (error) {
+                note.textContent = `Folder selection cancelled: ${error.message}`;
+            }
+        });
+
         const bootSelect = document.getElementById("boot-mode");
         bootSelect.value = bootMode;
         bootSelect.addEventListener("change", () => {
@@ -985,6 +1130,14 @@
         document.getElementById("sound").addEventListener("click", toggleSound);
         for (const button of document.querySelectorAll("#sound")) {
             button.dataset.copy = soundMuted ? "soundOff" : "soundOn";
+        }
+        if (soundMuted) {
+            // Re-apply the saved mute once the engine's audio manager exists (the export returns 1 then).
+            const applySavedMute = window.setInterval(() => {
+                if (Module._GeneralsXSetAudioMuted?.(1)) {
+                    window.clearInterval(applySavedMute);
+                }
+            }, 500);
         }
 
         document.addEventListener("fullscreenchange", fitCanvas);
@@ -1578,7 +1731,16 @@
                 fetch("/GeneralsXAssets").then((response) => response.json()),
                 streamWorkerReady || Promise.resolve()
             ])
-                .then(([entries]) => {
+                .then(([manifest]) => {
+                    const entries = manifest.entries || [];
+                    if (manifest.missing) {
+                        const panel = document.getElementById("firstrun-gate");
+                        panel.querySelector("code.firstrun-default").textContent =
+                            `${manifest.defaultPath}/Generals + ${manifest.defaultPath}/GeneralsZH`;
+                        panel.querySelector("code.firstrun-config").textContent = manifest.configPath;
+                        panel.hidden = false;
+                        return; // dependency stays: no game files, no game
+                    }
                     for (const entry of entries) {
                         FS.mkdirTree(entry.mount);
                         mountStreamedArchive(entry.mount, entry.name, entry.url, entry.size);
@@ -1587,9 +1749,12 @@
                     appendOutput([
                         `Streaming ${entries.length} game archives (${(total / 1073741824).toFixed(1)} GB) on demand.`
                     ], "log");
+                    removeRunDependency(dependency);
                 })
-                .catch((error) => appendOutput([`Asset manifest failed: ${error.message}`], "error"))
-                .finally(() => removeRunDependency(dependency));
+                .catch((error) => {
+                    appendOutput([`Asset manifest failed: ${error.message}`], "error");
+                    removeRunDependency(dependency);
+                });
         });
 
         // GeneralsX @feature Codex 05/08/2026 The game is configured by Options.ini, not the command line, so the

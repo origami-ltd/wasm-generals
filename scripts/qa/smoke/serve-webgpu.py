@@ -332,9 +332,37 @@ document.getElementById("log").textContent =
             self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
-    # GeneralsX @feature Codex 05/08/2026 Tell the page which archives to mount as streamed files, so the
-    # archive list lives with the data instead of being hardcoded in the shell.
+    # GeneralsX @feature Codex 06/08/2026 First-run: game archives come from the player's own install.
+    # Default location is ~/GeneralsX/{Generals,GeneralsZH}; custom paths (e.g. a Steam install) go in
+    # game_paths.txt next to the server data, one KEY=path per line: GENERALS=... / ZEROHOUR=...
+    GAME_PATHS_FILE = STEAM_DIR / "game_paths.txt"
+
+    def resolve_game_dirs(self) -> None:
+        root = Path(self.directory)
+        configured = {}
+        try:
+            for line in self.GAME_PATHS_FILE.read_text().splitlines():
+                key, _, value = line.partition("=")
+                if key.strip() in ("GENERALS", "ZEROHOUR") and value.strip():
+                    configured[key.strip()] = Path(value.strip()).expanduser()
+        except OSError:
+            pass
+        defaults = {"GENERALS": Path.home() / "GeneralsX" / "Generals",
+                    "ZEROHOUR": Path.home() / "GeneralsX" / "GeneralsZH"}
+        mounts = {"GENERALS": "Generals", "ZEROHOUR": "GeneralsZH"}
+        for key, mount in mounts.items():
+            link = root / mount
+            target = configured.get(key, defaults[key])
+            if not any(link.glob("*.big")) and target.is_dir() and any(target.glob("*.big")):
+                if link.is_symlink() or link.exists():
+                    try:
+                        link.unlink()
+                    except OSError:
+                        continue
+                link.symlink_to(target)
+
     def send_asset_manifest(self) -> None:
+        self.resolve_game_dirs()
         root = Path(self.directory)
         entries = []
         for mount in ("GeneralsZH", "Generals"):
@@ -348,7 +376,12 @@ document.getElementById("log").textContent =
                     "url": f"/{mount}/{archive.name}",
                     "size": archive.stat().st_size,
                 })
-        payload = json.dumps(entries, separators=(",", ":")).encode("utf-8")
+        payload = json.dumps({
+            "entries": entries,
+            "missing": not any(e["mount"] == "/GeneralsZH" for e in entries),
+            "defaultPath": str(Path.home() / "GeneralsX"),
+            "configPath": str(self.GAME_PATHS_FILE),
+        }, separators=(",", ":")).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(payload)))

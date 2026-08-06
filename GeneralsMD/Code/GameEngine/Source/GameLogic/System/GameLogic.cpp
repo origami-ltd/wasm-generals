@@ -1134,6 +1134,12 @@ static void populateRandomStartPosition( GameInfo *game )
 // ------------------------------------------------------------------------------------------------
 void GameLogic::updateLoadProgress( Int progress )
 {
+#if defined(__EMSCRIPTEN__)
+	// Narrate load progress to the page: it drives the guest download overlay and tells the page
+	// not to auto-resume audio while the engine deliberately silences the device for the load.
+	// Second field says whether a real load screen is up (0 during the shell-map boot).
+	fprintf(stderr, "GENERALSX_LOAD_PROGRESS %d %d\n", progress, m_loadScreen ? 1 : 0);
+#endif
 
 	if( m_loadScreen )
 	{
@@ -2329,6 +2335,22 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 		}
 	}
 
+#if defined(__EMSCRIPTEN__)
+	// A guest streams the archives from another machine; entering the match before the page pulled
+	// the whole game means mid-frame network reads — the stutter. The page raises this hold only
+	// for remote-served sessions and lowers it when the download lands (or fails). The sleep is
+	// ASYNCIFY-resumable, so the page's downloader keeps running underneath; the tick cap keeps a
+	// dead page from holding the match hostage (9000 × 100 ms = 15 min).
+	{
+		Int holdTicks = 0;
+		while (EM_ASM_INT({ return globalThis.__gxHoldMatch ? 1 : 0; }) && holdTicks++ < 9000)
+		{
+			updateLoadProgress(101);
+			emscripten_sleep(100);
+		}
+	}
+#endif
+
 	updateLoadProgress(LOAD_PROGRESS_END);
 
 	if(isInMultiplayerGame() && TheNetwork)
@@ -2377,6 +2399,11 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 			deleteLoadScreen();
 
 	}
+
+#if defined(__EMSCRIPTEN__)
+	// The load screen is gone and the match is about to run: the page hides its overlay on this.
+	fprintf(stderr, "GENERALSX_LOAD_DONE\n");
+#endif
 
 	#ifdef DUMP_PERF_STATS
 	GetPrecisionTimer(&endTime64);

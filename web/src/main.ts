@@ -1,4 +1,5 @@
 import "./style.css";
+import { initConsole } from "./console";
 import { ArchiveStreamer, findArchiveDirs, hasSavedFolders, loadManifest, localArchives } from "./streaming";
 import { el, render } from "./ui";
 import type { EmscriptenModule, ModuleFactory } from "./types";
@@ -23,10 +24,19 @@ let shipChain: Promise<unknown> = Promise.resolve();
 
 let menuPending = false;
 let menuUp = false;
+let loadActiveAt = 0; // last GENERALSX_LOAD_PROGRESS: the engine is inside a load right now
+let matchLoadPercent = 0;
 
 /** The engine narrates its boot; mirror that into the status line and only call it Running when
     the shell reports the main menu is up. Logic frames tick well before anything is drawn. */
 function trackBoot(line: string): void {
+  const progress = /^GENERALSX_LOAD_PROGRESS (\d+) (\d)/.exec(line);
+  if (progress) {
+    loadActiveAt = Date.now();
+    matchLoadPercent = Math.min(100, Number(progress[1]));
+    if (progress[2] === "1") holoShow(); // a real load screen is up, not the shell-map boot
+  }
+  if (line.startsWith("GENERALSX_LOAD_DONE")) holoHide();
   if (menuUp) return;
   if (line.includes("MainMenu.wnd")) menuPending = true;
   if (menuPending && line.includes("Push completed")) {
@@ -225,6 +235,22 @@ canvas.addEventListener("pointerdown", () => {
   if (!document.pointerLockElement && frame.dataset.ready === "true") canvas.requestPointerLock();
 });
 
+/* ------------------------------------------------------------------- pause */
+// Esc cannot pause in a browser: the pointer-lock exit consumes the key before the engine ever
+// sees it, so Esc only releases the mouse. Focus is the pause signal instead — click outside the
+// game surface (or hide the tab) and the sim pauses; click back on the canvas and it resumes.
+// The engine refuses the call in LAN matches, where the other players' simulation marches on.
+function setPaused(paused: boolean): void {
+  module?.ccall?.("GeneralsXSetPaused", "number", ["number"], [paused ? 1 : 0]);
+}
+addEventListener("pointerdown", (event) => {
+  setPaused(!frame.contains(event.target as Node));
+}, { capture: true });
+addEventListener("blur", () => setPaused(true));
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) setPaused(true);
+});
+
 /* ------------------------------------------------------------------- sound */
 function setSoundMuted(muted: boolean): void {
   soundMuted = muted;
@@ -234,6 +260,26 @@ function setSoundMuted(muted: boolean): void {
 }
 el("sound").addEventListener("click", () => setSoundMuted(!soundMuted));
 el("sound").textContent = soundMuted ? "Sound off" : "Sound on";
+
+/** WebAudio context states, for the console and the runtime log — silence debugging needs this. */
+function audioContextStates(): string {
+  const devices = (window as unknown as { miniaudio?: { devices?: { webaudio?: AudioContext }[] } }).miniaudio?.devices;
+  return devices?.map((device) => device?.webaudio?.state ?? "?").join(",") || "no-device";
+}
+
+initConsole({
+  module: () => module,
+  mute: () => {
+    setSoundMuted(!soundMuted);
+    return soundMuted ? "Sound muted." : "Sound on.";
+  },
+  status: () => `status=${status.textContent} audio=${audioContextStates()} muted=${soundMuted}`
+    + ` logic=${module?._GeneralsXLogicFrame?.() ?? 0}`
+    + ` cursor=${document.pointerLockElement ? "captured" : "free"}`,
+  sync: () => guestBulk
+    ? `${guestBulk.finished ? "done" : "syncing"} ${(guestBulk.done / 2 ** 20).toFixed(0)}/${(guestBulk.total / 2 ** 20).toFixed(0)} MB · ${guestBulk.file}`
+    : "no guest sync in this session",
+});
 
 /* ------------------------------------------------------------------- boot */
 if (!crossOriginIsolated) {
@@ -271,13 +317,90 @@ function nextLanClient(): number {
   return Math.floor(Math.random() * (LAN_NAMES.length - 1)) + 1;
 }
 
-const streamer = new ArchiveStreamer(log, (note, ratio) => report("", note, ratio));
+const streamer = new ArchiveStreamer(log);
 let lastManifest: { name: string; size: number; url: string; mount: string }[] | null = null;
+
+/* -------------------------------------------------------------- guest sync */
+// Served from another machine's link (https://<lan-ip>:8765): every archive byte crosses the
+// network, and a mid-frame read there is heard as a stutter. Local files never stutter, so the
+// full pull below only exists for guests.
+// ?guest=1 forces the guest flow on localhost, for testing the sync screen without two machines.
+const isGuest = query.get("guest") === "1"
+  || !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+let guestBulk: { done: number; total: number; file: string; finished: boolean } | null = null;
+
+/** The engine polls this inside the match load screen and refuses to start the match while 1. */
+function setHoldMatch(hold: boolean): void {
+  (globalThis as unknown as { __gxHoldMatch?: number }).__gxHoldMatch = hold ? 1 : 0;
+}
+
+const holo = el("holo");
+let holoTimer: ReturnType<typeof setInterval> | undefined;
+
+function holoShow(): void {
+  // Keyed to the hold flag, not the download bookkeeping: the overlay is up exactly while the
+  // engine is holding the match for the sync.
+  const holding = (globalThis as unknown as { __gxHoldMatch?: number }).__gxHoldMatch === 1;
+  if (!isGuest || !holding || !holo.hidden) return;
+  holo.hidden = false;
+  // The ring animations are compositor-driven and never stall; these numbers repaint on the
+  // yields the engine takes between load steps.
+  holoTimer = setInterval(() => {
+    if (!guestBulk) return;
+    const ratio = guestBulk.total ? guestBulk.done / guestBulk.total : 0;
+    el("holo-percent").textContent = `${Math.floor(ratio * 100)}%`;
+    el("holo-mb").textContent =
+      `${(guestBulk.done / 2 ** 20).toFixed(0)} / ${(guestBulk.total / 2 ** 20).toFixed(0)} MB`;
+    el("holo-file").textContent = guestBulk.finished ? "arsenal complete" : guestBulk.file;
+    el("holo-map").textContent = `map load ${matchLoadPercent}%`;
+  }, 250);
+}
+
+function holoHide(): void {
+  if (holo.hidden) return;
+  holo.hidden = true;
+  clearInterval(holoTimer);
+}
+
+/** The whole game, pulled while the guest sits in the menu and on through the match load screen.
+    Menu art and the full sound set go into memory, the bulk into the browser's disk cache. The
+    engine keeps the load screen up until this lands — that is the no-stutter guarantee. */
+function guestPreload(entries: { name: string; size: number }[]): void {
+  const warmSet = entries.filter((entry) => MENU_ARCHIVES.test(entry.name));
+  const primeSet = entries.filter((entry) => !MENU_ARCHIVES.test(entry.name));
+  const warmTotal = warmSet.reduce((sum, entry) => sum + entry.size, 0);
+  const total = entries.reduce((sum, entry) => sum + entry.size, 0);
+  guestBulk = { done: 0, total, file: "contacting host…", finished: false };
+  setHoldMatch(true);
+  const seen = (base: number) => (done: number, name: string): void => {
+    if (!guestBulk) return;
+    guestBulk.done = base + done;
+    guestBulk.file = name;
+    report("", `Syncing game · ${name} · ${((base + done) / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
+      (base + done) / total);
+  };
+  void streamer
+    .warm(warmSet as never, Number.MAX_SAFE_INTEGER, seen(0))
+    .then(() => streamer.prime(primeSet as never, seen(warmTotal)))
+    .catch(() => log("Guest sync stopped early — archives stream on demand instead."))
+    .finally(() => {
+      if (guestBulk) {
+        guestBulk.done = guestBulk.total;
+        guestBulk.finished = true;
+      }
+      setHoldMatch(false);
+      report("", "");
+      log("Full game synced from the host.");
+    });
+}
 
 // Chrome suspends an AudioContext created without user activation; miniaudio keeps feeding it and
 // the result is glitching, not silence. Resume on the first real gesture, and whenever the tab
 // comes back — the engine also suspends the device around map loads.
 function resumeAudio(): void {
+  // Hands off while the engine is inside a load: it silences the device on purpose there, and a
+  // resume would machine-gun the last rendered audio quantum. It resumes itself afterwards.
+  if (Date.now() - loadActiveAt < 2000) return;
   const devices = (window as unknown as { miniaudio?: { devices?: { webaudio?: AudioContext }[] } }).miniaudio?.devices;
   let suspended = 0;
   for (const device of devices ?? []) {
@@ -477,22 +600,28 @@ async function preload(url: string, label: string): Promise<void> {
 
 await preload("/GeneralsXZH.wasm", "engine");
 await preload("/GeneralsXZH.data", "startup files");
-// Audio is never waited on: it warms in the background and keeps going through the match load
-// screen, which is dead time anyway.
 const manifest = await loadManifest().catch(() => null);
 if (manifest && !manifest.missing) {
   lastManifest = manifest.entries;
-  await preloadEverything(manifest.entries);
+  // Local host: everything lands before Play — disk-speed, zero stutter. A guest would wait
+  // minutes here instead, so Play unlocks now and the full pull runs behind the menu; the engine
+  // then holds the match load screen open until it lands.
+  if (!isGuest) await preloadEverything(manifest.entries);
 }
 
 play.hidden = false;
-report("Ready", "everything downloaded — click Play to start audio");
+report("Ready", isGuest
+  ? "click Play — the game syncs from your host while you set up the match"
+  : "everything downloaded — click Play to start audio");
 play.addEventListener("click", () => {
   play.hidden = true;
   report("Starting engine", "loading game data");
+  if (isGuest && lastManifest && !lastManifest.some((entry) => "handle" in entry)) {
+    guestPreload(lastManifest);
+  }
   void factory(config);
-  // The engine creates its audio device during init; keep resuming for a while after the click,
-  // since that click is the user activation Chrome demands before a context may start.
-  const settle = setInterval(resumeAudio, 500);
-  setTimeout(() => clearInterval(settle), 30_000);
+  // The click is the user activation Chrome demands; sticky activation keeps later resumes legal.
+  // Resume forever — Full Start creates its audio device long after the old 30-second settle
+  // window closed, and the context then sat suspended and silent for the rest of the session.
+  setInterval(resumeAudio, 1000);
 }, { once: true });

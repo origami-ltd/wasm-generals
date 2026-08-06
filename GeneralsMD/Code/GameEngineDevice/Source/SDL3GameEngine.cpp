@@ -176,11 +176,31 @@ extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXMouseY()
 
 // GeneralsX @feature Codex 05/08/2026 Engine-level mute for the browser Sound button.
 // Never patch window.AudioContext for this: doing so wedges MiniAudio init and the game never starts.
+// GeneralsX @bugfix Codex 06/08/2026 Mute through the script-volume slot, not setOn(): the on/off
+// flags only gate NEW events, so muting left the looping music audible and unmuting never brought
+// anything back. A volume write reaches every playing voice via m_volumeHasChanged, and the system
+// (options) volumes stay untouched — unmute restores exactly what the player configured.
 extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXSetAudioMuted(Int muted)
 {
 	if (TheAudio == nullptr)
 		return FALSE;
-	TheAudio->setOn(muted ? FALSE : TRUE, AudioAffect_All);
+	TheAudio->setVolume(muted ? 0.0f : 1.0f, AudioAffect_All);
+	return TRUE;
+}
+
+// GeneralsX @feature Codex 06/08/2026 Pause when the player leaves the game surface. Esc cannot
+// pause in a browser — the pointer-lock exit consumes it before the engine ever sees the key — so
+// the page calls this when focus moves outside the canvas and when it comes back.
+extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXSetPaused(Int paused)
+{
+	if (TheGameLogic == nullptr || !TheGameLogic->isInGame() || TheGameLogic->isLoadingMap())
+		return FALSE;
+	if (TheNetwork != nullptr)
+		return FALSE; // a LAN match cannot pause: the other players' simulation marches on
+	const Bool want = paused ? TRUE : FALSE;
+	if ((TheGameLogic->isGamePaused() ? TRUE : FALSE) == want)
+		return TRUE;
+	TheGameLogic->setGamePaused(want);
 	return TRUE;
 }
 

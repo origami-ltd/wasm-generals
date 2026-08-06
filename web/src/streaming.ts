@@ -168,15 +168,21 @@ export class ArchiveStreamer {
     }
   }
 
-  async warm(entries: ArchiveEntry[], budget = 256 * 1024 * 1024): Promise<void> {
+  async warm(entries: ArchiveEntry[], budget = 256 * 1024 * 1024,
+             onProgress: (done: number, name: string) => void = () => {}): Promise<void> {
     let spent = 0;
     for (const entry of entries) {
       for (let index = 0; index * CHUNK_SIZE < entry.size; index += READAHEAD) {
         if (spent >= budget) return;
-        const key = `${entry.url}#${index}`;
-        if (this.cache.has(key)) continue;
         const start = index * CHUNK_SIZE;
         const end = Math.min(start + CHUNK_SIZE * READAHEAD, entry.size) - 1;
+        const key = `${entry.url}#${index}`;
+        if (this.cache.has(key)) {
+          // Already resident chunks still count as progress, or the bar stalls on cached stretches.
+          spent += end - start + 1;
+          onProgress(spent, entry.name);
+          continue;
+        }
         try {
           const bytes = entry.handle
             ? new Uint8Array(await (await entry.handle.getFile()).slice(start, end + 1).arrayBuffer())
@@ -191,6 +197,7 @@ export class ArchiveStreamer {
             this.cached += part.length;
           }
           spent += bytes.length;
+          onProgress(spent, entry.name);
         } catch {
           return; // link died; reads fall back to fetching on demand
         }

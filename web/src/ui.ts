@@ -49,7 +49,7 @@ export function render(root: HTMLElement): void {
             <span id="status" role="status" aria-live="polite" class="text-sm font-bold">Starting…</span>
             <span id="status-detail" class="truncate text-xs text-hud-muted"></span>
           </div>
-          <div id="progress-track" hidden class="mt-1 h-1 w-full bg-hud-raised">
+          <div id="progress-track" hidden class="mt-1 h-1.5 w-full border border-hud-border/70 bg-black/50 p-px">
             <div id="progress-bar" class="h-full w-0 bg-hud-accent transition-[width] duration-150"></div>
           </div>
         </div>
@@ -67,6 +67,42 @@ export function render(root: HTMLElement): void {
             <span class="hud-cut px-10 py-5 text-2xl uppercase tracking-[0.2em]"
                   style="--hud-cut-surface: var(--color-hud-raised)">Play</span>
           </button>
+
+          <!-- Holographic sync screen: shown to guests while the full game streams from their host
+               during the match load screen. Pure CSS 3D — transforms/opacity only, so it keeps
+               animating even while the engine hogs the main thread. -->
+          <div id="holo" hidden class="absolute inset-0 z-[8] overflow-hidden bg-[hsl(210_100%_2%/.96)]">
+            <div class="holo-floor"></div>
+            <div class="holo-stack">
+              <div class="holo-core">
+                <div class="holo-ring holo-ring-a"></div>
+                <div class="holo-ring holo-ring-b"></div>
+                <div class="holo-ring holo-ring-c"></div>
+                <div class="holo-beam"></div>
+                <div class="holo-readout">
+                  <div id="holo-percent" class="holo-percent">0%</div>
+                  <div id="holo-mb" class="holo-mb">contacting host…</div>
+                </div>
+              </div>
+              <div class="holo-caption">
+                <div class="holo-title">Syncing battlefield data</div>
+                <div id="holo-file" class="holo-file">&nbsp;</div>
+                <div id="holo-map" class="holo-map">&nbsp;</div>
+                <div class="holo-note">Streaming the full game from your host — the match starts the moment it lands.</div>
+              </div>
+            </div>
+            <div class="holo-scan"></div>
+          </div>
+
+          <!-- Backtick developer console -->
+          <div id="dev-console" hidden class="absolute inset-x-0 top-0 z-[9] flex max-h-[55%] flex-col border-b border-hud-border bg-[hsl(210_100%_2%/.92)]">
+            <pre id="dev-console-output" class="m-0 flex-1 overflow-auto whitespace-pre-wrap p-2 text-xs text-hud-fg"></pre>
+            <form id="dev-console-form" class="flex items-center border-t border-hud-border">
+              <span class="px-2 py-1 text-xs text-hud-accent">&gt;</span>
+              <input id="dev-console-input" autocomplete="off" autocapitalize="off" spellcheck="false"
+                     class="min-w-0 flex-1 bg-transparent py-1 pr-2 text-xs text-hud-fg outline-none">
+            </form>
+          </div>
           <img id="cursor-overlay" alt="" hidden class="pointer-events-none fixed left-0 top-0 z-[5] [image-rendering:pixelated]">
 
           <div id="firstrun" hidden class="absolute inset-0 z-[6] grid place-items-center bg-[hsl(210_100%_2%/.94)] p-4">

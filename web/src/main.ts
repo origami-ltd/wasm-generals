@@ -252,9 +252,26 @@ function nextLanClient(): number {
 
 const streamer = new ArchiveStreamer(log, (note, ratio) => report("", note, ratio));
 
+// Chrome suspends an AudioContext created without user activation; miniaudio keeps feeding it and
+// the result is glitching, not silence. Resume on the first real gesture, and whenever the tab
+// comes back — the engine also suspends the device around map loads.
+function resumeAudio(): void {
+  const devices = (window as unknown as { miniaudio?: { devices?: { webaudio?: AudioContext }[] } }).miniaudio?.devices;
+  for (const device of devices ?? []) {
+    if (device?.webaudio?.state === "suspended" && !document.hidden) void device.webaudio.resume();
+  }
+}
+for (const event of ["pointerdown", "keydown", "visibilitychange"]) {
+  addEventListener(event, resumeAudio, { capture: true });
+}
+
 /** Sound and music first: those are the reads that would otherwise stall a frame mid-battle. */
 function warmAudio(entries: { name: string; size: number }[]): void {
-  const audio = entries.filter((entry) => /^(audio|music|speech)/i.test(entry.name));
+  const priority = (name: string): number =>
+    /^music/i.test(name) ? 0 : /^audio.*zh/i.test(name) ? 1 : /^audio/i.test(name) ? 2 : 3;
+  const audio = entries
+    .filter((entry) => /^(audio|music|speech)/i.test(entry.name))
+    .sort((a, b) => priority(a.name) - priority(b.name));
   const total = audio.reduce((sum, entry) => sum + entry.size, 0);
   void streamer
     .warm(audio as never, total, (done, name) =>

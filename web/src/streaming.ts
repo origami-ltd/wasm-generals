@@ -59,6 +59,7 @@ const workerSource = `
 export class ArchiveStreamer {
   private readonly cache = new Map<string, Uint8Array>();
   private cached = 0;
+  private readonly pending = new Set<string>();
   private readonly nextIndex = new Map<string, number>();
   private worker: Worker | null = null;
   private buffer: SharedArrayBuffer | null = null;
@@ -171,8 +172,36 @@ export class ArchiveStreamer {
     }
   }
 
+  /** Queue a chunk for the background warmer without blocking the caller. */
+  private schedule(entry: ArchiveEntry, index: number): void {
+    const key = `${entry.url}#${index}`;
+    // Cap in-flight background reads: firing one per miss opened hundreds of sockets and the server
+    // started refusing connections.
+    if (this.cache.has(key) || this.pending.has(key) || this.pending.size >= 4) return;
+    this.pending.add(key);
+    const start = index * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE * READAHEAD, entry.size) - 1;
+    const source = entry.handle
+      ? entry.handle.getFile().then((file) => file.slice(start, end + 1).arrayBuffer())
+      : fetch(entry.url, { headers: { Range: `bytes=${start}-${end}` } }).then((r) => r.arrayBuffer());
+    void source
+      .then((buffer) => {
+        const bytes = new Uint8Array(buffer);
+        for (let offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {
+          const partKey = `${entry.url}#${index + offset / CHUNK_SIZE}`;
+          if (this.cache.has(partKey)) continue;
+          const part = bytes.subarray(offset, Math.min(offset + CHUNK_SIZE, bytes.length));
+          this.cache.set(partKey, part);
+          this.cached += part.length;
+        }
+      })
+      .catch(() => {})
+      .finally(() => this.pending.delete(key));
+  }
+
   mount(module: EmscriptenModule, entry: ArchiveEntry): void {
     const FS = module.FS as EmscriptenFS;
+    const isAudio = /^(audio|music|speech)/i.test(entry.name);
     FS.mkdirTree(entry.mount);
     const node = FS.createFile(entry.mount, entry.name, {}, true, false);
     const size = entry.size;
@@ -191,6 +220,14 @@ export class ArchiveStreamer {
         const firstChunk = Math.floor(position / CHUNK_SIZE);
         const lastChunk = Math.floor((end - 1) / CHUNK_SIZE);
         let written = 0;
+        // A sound played for the first time must not freeze the frame: on a miss inside an audio
+        // archive, hand the decoder silence and fetch in the background — the next play has it.
+        const softMiss = isAudio && !this.cache.has(`${entry.url}#${firstChunk}`);
+        if (softMiss) {
+          for (let index = firstChunk; index <= lastChunk; index += 1) this.schedule(entry, index);
+          buffer.fill(0, offset, offset + (end - position));
+          return end - position;
+        }
         for (let index = firstChunk; index <= lastChunk; index += 1) {
           const chunk = this.takeChunk(entry.url, index, entry.handle);
           const chunkStart = index * CHUNK_SIZE;

@@ -388,6 +388,9 @@ def main() -> int:
 
     handler = functools.partial(WebGPURequestHandler, directory=str(directory))
     server = ThreadingHTTPServer((args.bind, args.port), handler)
+    # A browser opening many parallel range reads must not out-run the accept queue.
+    server.daemon_threads = True
+    server.request_queue_size = 128
     scheme = "http"
     if args.cert:
         import ssl

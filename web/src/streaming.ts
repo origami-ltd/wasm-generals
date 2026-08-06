@@ -9,8 +9,10 @@
  */
 import type { EmscriptenFS, EmscriptenModule } from "./types";
 
-const CHUNK_SIZE = 4 * 1024 * 1024;
-const CACHE_LIMIT = 192 * 1024 * 1024;
+// 4 MiB chunks meant a 1 KiB read cost 4 MiB and only 48 blocks fitted the cache, so a map load
+// thrashed and pulled ~35 GB over ~9000 requests. Smaller blocks, far more of them cached.
+const CHUNK_SIZE = 256 * 1024;
+const CACHE_LIMIT = 384 * 1024 * 1024;
 
 export interface ArchiveEntry {
   mount: string;
@@ -55,6 +57,7 @@ const workerSource = `
 
 export class ArchiveStreamer {
   private readonly cache = new Map<string, Uint8Array>();
+  private cached = 0;
   private worker: Worker | null = null;
   private buffer: SharedArrayBuffer | null = null;
   /** Resolves once the worker is alive. It must be running before the engine ever spin-waits:
@@ -110,11 +113,10 @@ export class ArchiveStreamer {
     }
     const chunk = this.fetchChunkSync(url, index, handle);
     this.cache.set(key, chunk);
-    let total = 0;
-    for (const value of this.cache.values()) total += value.length;
-    while (total > CACHE_LIMIT && this.cache.size > 1) {
+    this.cached += chunk.length;
+    while (this.cached > CACHE_LIMIT && this.cache.size > 1) {
       const oldest = this.cache.keys().next().value as string;
-      total -= this.cache.get(oldest)?.length ?? 0;
+      this.cached -= this.cache.get(oldest)?.length ?? 0;
       this.cache.delete(oldest);
     }
     return chunk;

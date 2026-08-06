@@ -36,6 +36,9 @@
 #endif
 #endif
 
+#if defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+#endif
 #include "Common/AudioAffect.h"
 #include "Common/AudioHandleSpecialValues.h"
 #include "Common/BuildAssistant.h"
@@ -1215,6 +1218,11 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 #endif
 
 	setLoadingMap( TRUE );
+#if defined(__EMSCRIPTEN__)
+	// GeneralsX @bugfix Codex 06/08/2026 The blocking map load starves the WebAudio callback, so the browser
+	// machine-guns the last rendered quantum (the menu click) for the whole load. Suspend the device until done.
+	EM_ASM({ if (window.miniaudio) window.miniaudio.devices.forEach(function(d) { if (d && d.webaudio) d.webaudio.suspend(); }); });
+#endif
 
 	if( loadingSaveGame == FALSE )
 	{
@@ -2500,6 +2508,9 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 	//ReAllows quit menu to work during loading scene
 	//setGameLoading(FALSE);
 	setLoadingMap( FALSE );
+#if defined(__EMSCRIPTEN__)
+	EM_ASM({ if (window.miniaudio) window.miniaudio.devices.forEach(function(d) { if (d && d.webaudio) d.webaudio.resume(); }); });
+#endif
 
 #ifdef DUMP_PERF_STATS
 	GetPrecisionTimer(&endTime64);

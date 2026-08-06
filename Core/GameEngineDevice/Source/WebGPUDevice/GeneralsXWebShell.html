@@ -141,8 +141,11 @@
             gap: 10px;
         }
 
-        .canvas-shell {
+        .canvas-stage {
             flex: 1 1 auto;
+            min-height: 0;
+            display: grid;
+            place-items: center;
         }
 
         .runtime-bar {
@@ -212,7 +215,6 @@
             position: relative;
             display: grid;
             place-items: center;
-            min-height: 240px;
             padding: 8px;
             overflow: hidden;
             clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--gx-cut)), calc(100% - var(--gx-cut)) 100%, 0 100%);
@@ -505,6 +507,7 @@
                 <span class="capability" id="webgpu-capability"></span>
             </div>
         </section>
+        <div class="canvas-stage" id="canvas-stage">
         <section class="canvas-shell" id="canvas-shell" data-ready="false">
             <canvas id="canvas" tabindex="0"></canvas>
             <img id="cursor-overlay" class="cursor-overlay" alt="" hidden>
@@ -527,6 +530,7 @@
                     <input id="developer-console-input" autocomplete="off" autocapitalize="off" spellcheck="false">
                 </form>
             </section>
+        </div>
         </section>
         <details>
             <summary data-copy="runtimeLog"></summary>
@@ -983,6 +987,7 @@
             button.dataset.copy = soundMuted ? "soundOff" : "soundOn";
         }
 
+        document.addEventListener("fullscreenchange", fitCanvas);
         document.addEventListener("fullscreenchange", () => {
             if (!document.fullscreenElement && document.pointerLockElement) {
                 document.exitPointerLock?.();
@@ -993,15 +998,17 @@
         // must stay visible around the render at any window size, and CSS cannot express that for a canvas
         // whose attribute size the engine controls.
         function fitCanvas() {
-            const availWidth = canvasShell.clientWidth - 16;
-            const availHeight = canvasShell.clientHeight - 16;
+            const stage = document.getElementById("canvas-stage");
+            const fullscreen = document.fullscreenElement === canvasShell;
+            const availWidth = (fullscreen ? window.innerWidth : stage.clientWidth) - 16;
+            const availHeight = (fullscreen ? window.innerHeight : stage.clientHeight) - 16;
             const width = canvas.width || 1;
             const height = canvas.height || 1;
             const scale = Math.min(availWidth / width, availHeight / height);
             canvas.style.width = `${Math.max(1, Math.floor(width * scale))}px`;
             canvas.style.height = `${Math.max(1, Math.floor(height * scale))}px`;
         }
-        new ResizeObserver(fitCanvas).observe(canvasShell);
+        new ResizeObserver(fitCanvas).observe(document.getElementById("canvas-stage"));
         new MutationObserver(fitCanvas).observe(canvas, { attributes: true, attributeFilter: ["width", "height"] });
         window.addEventListener("resize", fitCanvas);
         fitCanvas();

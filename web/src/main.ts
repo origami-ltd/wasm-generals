@@ -1,5 +1,5 @@
 import "./style.css";
-import { ArchiveStreamer, findArchiveDirs, loadManifest, localArchives } from "./streaming";
+import { ArchiveStreamer, findArchiveDirs, hasSavedFolders, loadManifest, localArchives } from "./streaming";
 import { el, render } from "./ui";
 import type { EmscriptenModule, ModuleFactory } from "./types";
 
@@ -241,6 +241,12 @@ const config: Record<string, unknown> = {
             log(`Streaming ${local.length} archives from your selected folders.`);
             instance.removeRunDependency("gx-assets");
             return;
+          }
+          if (await hasSavedFolders()) {
+            // Handles exist but the browser wants a gesture to re-grant access on this load.
+            el("firstrun").hidden = false;
+            el("firstrun-folder-note").textContent = "Click to re-allow access to your game folder.";
+            return; // dependency stays: booting now would mean booting with no archives
           }
           const manifest = await loadManifest();
           if (manifest.missing) {

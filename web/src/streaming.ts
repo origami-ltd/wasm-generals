@@ -193,22 +193,35 @@ export async function findArchiveDirs(
 
 /** Archives from the folders the player picked, read locally with no server involvement. */
 export async function localArchives(): Promise<ArchiveEntry[]> {
+  try {
+    return await readLocalArchives();
+  } catch (error) {
+    // Never let a permission/IDB failure skip mounting entirely — the caller falls back to the server.
+    console.debug("local archives unavailable", error);
+    return [];
+  }
+}
+
+async function readLocalArchives(): Promise<ArchiveEntry[]> {
   const database = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("generalsx", 1);
     request.onupgradeneeded = () => request.result.createObjectStore("handles");
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
   });
+  // Both reads must be issued before the first await: an IDB transaction closes as soon as the
+  // event loop yields, so a second get() after awaiting getFile() throws "transaction has finished".
   const store = database.transaction("handles", "readonly").objectStore("handles");
-  const read = (key: string) =>
+  const request = (key: string) =>
     new Promise<FileSystemDirectoryHandle | undefined>((resolve) => {
-      const request = store.get(key);
-      request.onsuccess = () => resolve(request.result as FileSystemDirectoryHandle | undefined);
-      request.onerror = () => resolve(undefined);
+      const get = store.get(key);
+      get.onsuccess = () => resolve(get.result as FileSystemDirectoryHandle | undefined);
+      get.onerror = () => resolve(undefined);
     });
+  const pending = { GeneralsZH: request("GeneralsZH"), Generals: request("Generals") };
   const entries: ArchiveEntry[] = [];
   for (const mount of ["GeneralsZH", "Generals"] as const) {
-    const directory = await read(mount);
+    const directory = await pending[mount];
     if (!directory) continue;
     if ((await directory.queryPermission?.({ mode: "read" })) !== "granted"
         && (await directory.requestPermission?.({ mode: "read" })) !== "granted") {
@@ -222,4 +235,23 @@ export async function localArchives(): Promise<ArchiveEntry[]> {
     }
   }
   return entries;
+}
+
+/** True when the player already picked folders, even if this load cannot read them yet. */
+export async function hasSavedFolders(): Promise<boolean> {
+  try {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("generalsx", 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("handles");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return await new Promise<boolean>((resolve) => {
+      const request = database.transaction("handles", "readonly").objectStore("handles").count();
+      request.onsuccess = () => resolve(request.result > 0);
+      request.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
 }

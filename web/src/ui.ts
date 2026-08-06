@@ -22,8 +22,7 @@ export function render(root: HTMLElement): void {
         <p class="m-0 hidden text-sm text-hud-muted sm:block">WebAssembly + WebGPU</p>
       </div>
       <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-        <span id="share-note" class="hidden border-l-[3px] border-hud-ready bg-hud-raised px-3 py-1.5 text-xs"></span>
-        <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2">
           <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden sm:inline">Display</span>
             <select id="aspect" class="hud-select"><option value="16:9">16:9</option><option value="4:3">4:3</option></select>
           </label>
@@ -35,7 +34,7 @@ export function render(root: HTMLElement): void {
           </label>
         </div>
         <div class="flex items-center gap-2">
-          <button id="share" class="hud-button" title="Copy a link so players on your network can join">Share</button>
+          <button id="share" class="hud-button" title="Copy the link for players on your network">Multiplayer</button>
           <button id="sound" class="hud-button">Sound on</button>
           <button id="fullscreen" class="hud-button">Fullscreen</button>
           <button id="reset" class="hud-button" title="Clear saved settings and ownership, then reload">Reset</button>

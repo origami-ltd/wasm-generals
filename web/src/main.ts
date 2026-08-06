@@ -80,12 +80,14 @@ el("reset").addEventListener("click", () => {
 /* ------------------------------------------------------------ first-run gate */
 // Share the running host with players on the same network: they stream the archives from here.
 el("share").addEventListener("click", async () => {
-  const note = el("share-note");
+  const button = el("share");
   const { url } = (await (await fetch("/GeneralsXShare")).json()) as { url: string };
   await navigator.clipboard?.writeText(url).catch(() => {});
-  note.textContent = `Copied: ${url}`;
-  note.classList.remove("hidden");
+  const label = button.textContent;
+  button.textContent = "Link copied";
+  setTimeout(() => { button.textContent = label; }, 1800);
 });
+
 el("firstrun-info").addEventListener("click", () => {
   const panel = el("firstrun-info-panel");
   panel.hidden = !panel.hidden;

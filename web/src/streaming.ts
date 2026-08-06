@@ -12,8 +12,9 @@ import type { EmscriptenFS, EmscriptenModule } from "./types";
 // 4 MiB chunks meant a 1 KiB read cost 4 MiB and only 48 blocks fitted the cache, so a map load
 // thrashed and pulled ~35 GB over ~9000 requests. Smaller blocks, far more of them cached.
 const CHUNK_SIZE = 256 * 1024;
-const CACHE_LIMIT = 1024 * 1024 * 1024; // holds the full audio set plus a map working set
-const READAHEAD = 8; // chunks pulled per miss
+const CACHE_LIMIT = 320 * 1024 * 1024; // small in-memory LRU: the disk cache holds the rest
+const READAHEAD = 8;  // chunks pulled per sequential miss
+const READAHEAD_RUN = 32; // once a run is established, pull much more per round trip
 
 export interface ArchiveEntry {
   mount: string;
@@ -60,6 +61,7 @@ export class ArchiveStreamer {
   private readonly cache = new Map<string, Uint8Array>();
   private cached = 0;
   private readonly pending = new Set<string>();
+  private run = 0;
   private readonly nextIndex = new Map<string, number>();
   private worker: Worker | null = null;
   private buffer: SharedArrayBuffer | null = null;
@@ -73,7 +75,7 @@ export class ArchiveStreamer {
       return;
     }
     this.worker = new Worker(URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" })));
-    this.buffer = new SharedArrayBuffer(CHUNK_SIZE * READAHEAD + 8);
+    this.buffer = new SharedArrayBuffer(CHUNK_SIZE * READAHEAD_RUN + 8);
     this.ready = new Promise((resolve) => this.worker?.addEventListener("message", resolve, { once: true }));
   }
 
@@ -119,7 +121,10 @@ export class ArchiveStreamer {
     const sequential = this.nextIndex.get(url) === index;
     // No reporting from here: this runs inside the engine's synchronous read, and touching the DOM
     // per chunk stalled the boot.
-    const span = this.fetchChunkSync(url, index, handle, sequential ? READAHEAD : 1);
+    this.run = sequential ? this.run + 1 : 0;
+    // A long sequential run means a map load walking an archive: pull much more per round trip.
+    const chunks = sequential ? (this.run > 2 ? READAHEAD_RUN : READAHEAD) : 1;
+    const span = this.fetchChunkSync(url, index, handle, chunks);
     this.nextIndex.set(url, index + span.length / CHUNK_SIZE);
     for (let offset = 0; offset < span.length; offset += CHUNK_SIZE) {
       const part = span.subarray(offset, Math.min(offset + CHUNK_SIZE, span.length));
@@ -141,6 +146,28 @@ export class ArchiveStreamer {
   /** Pull an archive into the cache in the background so reads of it never block the engine.
       Audio is the case that matters: a sound played for the first time otherwise stalls the frame
       on a synchronous fetch, which on a slow link is heard as a stutter. */
+  /** Pull an archive through the network into the browser's disk cache without keeping it in memory.
+      Reads that miss the LRU then cost a local cache hit instead of a network round trip. */
+  async prime(entries: ArchiveEntry[], onProgress: (done: number, name: string) => void = () => {}): Promise<void> {
+    let done = 0;
+    for (const entry of entries) {
+      if (entry.handle) continue; // already local
+      const step = CHUNK_SIZE * READAHEAD_RUN;
+      for (let start = 0; start < entry.size; start += step) {
+        const end = Math.min(start + step, entry.size) - 1;
+        try {
+          const response = await fetch(entry.url, { headers: { Range: `bytes=${start}-${end}` } });
+          await response.arrayBuffer(); // read and drop: the browser keeps it, we do not
+        } catch {
+          return;
+        }
+        done += end - start + 1;
+        onProgress(done, entry.name);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    }
+  }
+
   async warm(entries: ArchiveEntry[], budget = 256 * 1024 * 1024): Promise<void> {
     let spent = 0;
     for (const entry of entries) {

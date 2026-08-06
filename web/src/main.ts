@@ -272,31 +272,67 @@ function nextLanClient(): number {
 }
 
 const streamer = new ArchiveStreamer(log, (note, ratio) => report("", note, ratio));
+let lastManifest: { name: string; size: number; url: string; mount: string }[] | null = null;
 
 // Chrome suspends an AudioContext created without user activation; miniaudio keeps feeding it and
 // the result is glitching, not silence. Resume on the first real gesture, and whenever the tab
 // comes back — the engine also suspends the device around map loads.
 function resumeAudio(): void {
   const devices = (window as unknown as { miniaudio?: { devices?: { webaudio?: AudioContext }[] } }).miniaudio?.devices;
+  let suspended = 0;
   for (const device of devices ?? []) {
-    if (device?.webaudio?.state === "suspended" && !document.hidden) void device.webaudio.resume();
+    if (device?.webaudio?.state === "suspended" && !document.hidden) {
+      suspended += 1;
+      void device.webaudio.resume();
+    }
   }
+  if (suspended) log(`Audio context suspended by the browser; resuming (${suspended}).`);
 }
 for (const event of ["pointerdown", "keydown", "visibilitychange"]) {
   addEventListener(event, resumeAudio, { capture: true });
 }
 
 /** Sound and music first: those are the reads that would otherwise stall a frame mid-battle. */
+/** Two phases, because the files are always local or on the LAN: pull the whole game in, but pull
+    what the menu needs first so Play is not held for gigabytes.
+    Menu: INI, window/UI art, English strings, music. Match: everything else. */
+const MENU_ARCHIVES = /^(ini|window|english|music|gensec|patch)/i;
+
+function preloadEverything(entries: { name: string; size: number }[]): void {
+  const menu = entries.filter((entry) => MENU_ARCHIVES.test(entry.name));
+  const match = entries.filter((entry) => !MENU_ARCHIVES.test(entry.name));
+  const total = entries.reduce((sum, entry) => sum + entry.size, 0);
+  // Menu assets go into memory (small, needed immediately); the rest is primed into the browser's
+  // disk cache so the whole game is local without holding gigabytes in the tab.
+  void streamer
+    .warm(menu as never, Number.MAX_SAFE_INTEGER, (done, name) =>
+      report("", `Caching menu · ${name} · ${(done / 2 ** 20).toFixed(0)} MB`))
+    .then(() => streamer.prime(match as never, (done, name) =>
+      report("", `Caching game · ${name} · ${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
+        done / total)))
+    .then(() => {
+      report("", "");
+      log("All archives cached locally.");
+    });
+}
+
 function warmAudio(entries: { name: string; size: number }[]): void {
+  // Anything read mid-frame stutters if it is not already in memory: sounds and textures alike.
+  // Warm them in the order the game reaches for them.
   const priority = (name: string): number =>
-    /^music/i.test(name) ? 0 : /^audio.*zh/i.test(name) ? 1 : /^audio/i.test(name) ? 2 : 3;
+    /^music/i.test(name) ? 0
+    : /^audio.*zh/i.test(name) ? 1
+    : /^audio/i.test(name) ? 2
+    : 3; // speech last: big and least missed
+  // Textures are deliberately not warmed wholesale: the set is larger than the cache, so it only
+  // evicts the audio that was already there. They ride the normal streaming path instead.
   const audio = entries
     .filter((entry) => /^(audio|music|speech)/i.test(entry.name))
     .sort((a, b) => priority(a.name) - priority(b.name));
   const total = audio.reduce((sum, entry) => sum + entry.size, 0);
   void streamer
     .warm(audio as never, total, (done, name) =>
-      report("", `Caching audio · ${name} · ${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
+      report("", `Caching · ${name} · ${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
         done / total))
     .then(() => {
       log("Audio archives cached locally.");
@@ -327,7 +363,8 @@ const config: Record<string, unknown> = {
           // A picked install wins: read straight from the player's disk, server not involved.
           if (local.length) {
             for (const entry of local) streamer.mount(instance, entry);
-            warmAudio(local);
+            lastManifest = local;
+            preloadEverything(local);
             log(`Streaming ${local.length} archives from your selected folders.`);
             instance.removeRunDependency("gx-assets");
             return;
@@ -441,7 +478,10 @@ await preload("/GeneralsXZH.data", "startup files");
 // Audio is never waited on: it warms in the background and keeps going through the match load
 // screen, which is dead time anyway.
 const manifest = await loadManifest().catch(() => null);
-if (manifest && !manifest.missing) warmAudio(manifest.entries);
+if (manifest && !manifest.missing) {
+  lastManifest = manifest.entries;
+  preloadEverything(manifest.entries);
+}
 
 play.hidden = false;
 report("Ready", "click Play to start");
@@ -449,4 +489,8 @@ play.addEventListener("click", () => {
   play.hidden = true;
   report("Starting engine", "loading game data");
   void factory(config);
+  // The engine creates its audio device during init; keep resuming for a while after the click,
+  // since that click is the user activation Chrome demands before a context may start.
+  const settle = setInterval(resumeAudio, 500);
+  setTimeout(() => clearInterval(settle), 30_000);
 }, { once: true });

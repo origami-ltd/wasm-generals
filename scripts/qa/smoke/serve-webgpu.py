@@ -93,6 +93,9 @@ CONFIG_DIR = Path.home() / "Library" / "Application Support" / "GeneralsX"
 
 # GeneralsX @build Codex 04/08/2026 Provide deterministic local browser isolation.
 class WebGPURequestHandler(SimpleHTTPRequestHandler):
+    # HTTP/1.0 closes per response; parallel range reads then raced the close and the browser
+    # reported ERR_CONTENT_LENGTH_MISMATCH.
+    protocol_version = "HTTP/1.1"
     extensions_map = {
         **SimpleHTTPRequestHandler.extensions_map,
         ".wasm": "application/wasm",

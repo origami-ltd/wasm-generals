@@ -62,6 +62,11 @@ export function render(root: HTMLElement): void {
       <div id="stage" class="grid min-h-0 w-full min-w-0 flex-1 place-items-center overflow-hidden">
         <section id="frame" class="hud-cut relative grid min-w-0 place-items-center p-2" style="--hud-cut-surface: #000">
           <canvas id="canvas" tabindex="0" class="block border-0 bg-black"></canvas>
+          <button id="play" hidden
+                  class="absolute inset-0 z-[7] grid place-items-center bg-[hsl(210_100%_2%/.9)] text-hud-accent">
+            <span class="hud-cut px-10 py-5 text-2xl uppercase tracking-[0.2em]"
+                  style="--hud-cut-surface: var(--color-hud-raised)">Play</span>
+          </button>
           <img id="cursor-overlay" alt="" hidden class="pointer-events-none fixed left-0 top-0 z-[5] [image-rendering:pixelated]">
 
           <div id="firstrun" hidden class="absolute inset-0 z-[6] grid place-items-center bg-[hsl(210_100%_2%/.94)] p-4">

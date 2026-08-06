@@ -21,7 +21,28 @@ const pendingLines: string[] = [];
 const shownLines: string[] = [];
 let shipChain: Promise<unknown> = Promise.resolve();
 
+let menuPending = false;
+let menuUp = false;
+
+/** The engine narrates its boot; mirror that into the status line and only call it Running when
+    the shell reports the main menu is up. Logic frames tick well before anything is drawn. */
+function trackBoot(line: string): void {
+  if (menuUp) return;
+  if (line.includes("MainMenu.wnd")) menuPending = true;
+  if (menuPending && line.includes("Push completed")) {
+    menuUp = true;
+    report("Running", "");
+    return;
+  }
+  const subsystem = /initSubsystem\('([^']+)'\)/.exec(line);
+  if (subsystem) report("Starting engine", `initialising ${subsystem[1]}`);
+  else if (line.startsWith("[INI] load(")) {
+    report("Starting engine", `reading ${line.slice(11, line.indexOf(")"))}`);
+  }
+}
+
 function log(line: string): void {
+  trackBoot(line);
   pendingLines.push(line);
   shownLines.push(line);
   if (shownLines.length > 512) shownLines.shift();
@@ -325,7 +346,6 @@ const config: Record<string, unknown> = {
             return; // dependency stays: no game files, no game
           }
           for (const entry of manifest.entries) streamer.mount(instance, entry);
-          warmAudio(manifest.entries);
           const total = manifest.entries.reduce((sum, entry) => sum + entry.size, 0);
           log(`Streaming ${manifest.entries.length} game archives (${(total / 2 ** 30).toFixed(1)} GB) on demand.`);
           instance.removeRunDependency("gx-assets");
@@ -381,14 +401,6 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
   const lanClient = Number(query.get("lanClient") ?? stored ?? 0) || nextLanClient();
   sessionStorage.setItem("generalsX.lanClient", String(lanClient));
   el("share").hidden = false;
-  report("Starting engine", "loading game data");
-  // "Running" is a lie until the engine has actually drawn something; watch its frame counter.
-  const watchFirstFrame = setInterval(() => {
-    if ((module?._GeneralsXLogicFrame?.() ?? 0) > 0) {
-      clearInterval(watchFirstFrame);
-      report("Running", "");
-    }
-  }, 250);
   const label = LAN_NAMES[lanClient] ?? `Player${lanClient}`;
   const nameLan = setInterval(() => {
     if (module?.ccall?.("GeneralsXLanSetName", "number", ["string"], [label])) clearInterval(nameLan);
@@ -404,4 +416,37 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
 
 setStatus("Loading…");
 const factory = (await import(/* @vite-ignore */ "/GeneralsXZH.js")).default as ModuleFactory;
-void factory(config);
+
+// Chrome refuses to start an AudioContext without user activation, and the engine creates its
+// device during init — so the runtime only starts once the player has clicked Play.
+const play = el<HTMLButtonElement>("play");
+
+/** Pull a file into the HTTP cache with progress, so Play means "everything is here". */
+async function preload(url: string, label: string): Promise<void> {
+  const response = await fetch(url);
+  const total = Number(response.headers.get("Content-Length") ?? 0);
+  const reader = response.body?.getReader();
+  let done = 0;
+  while (reader) {
+    const chunk = await reader.read();
+    if (chunk.done) break;
+    done += chunk.value.byteLength;
+    report("Downloading", `${label} · ${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
+      total ? done / total : undefined);
+  }
+}
+
+await preload("/GeneralsXZH.wasm", "engine");
+await preload("/GeneralsXZH.data", "startup files");
+// Audio is never waited on: it warms in the background and keeps going through the match load
+// screen, which is dead time anyway.
+const manifest = await loadManifest().catch(() => null);
+if (manifest && !manifest.missing) warmAudio(manifest.entries);
+
+play.hidden = false;
+report("Ready", "click Play to start");
+play.addEventListener("click", () => {
+  play.hidden = true;
+  report("Starting engine", "loading game data");
+  void factory(config);
+}, { once: true });

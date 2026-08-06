@@ -51,7 +51,7 @@ if(SAGE_USE_WEBGPU)
         "-sMODULARIZE=1"
         "-sEXPORT_ES6=1"
         "-sEXPORT_NAME=createGeneralsX"
-        "-sEXPORTED_RUNTIME_METHODS=FS,IDBFS,addRunDependency,removeRunDependency,callMain"
+        "-sEXPORTED_RUNTIME_METHODS=FS,IDBFS,addRunDependency,removeRunDependency,callMain,ccall"
     )
     set_target_properties(z_generals PROPERTIES SUFFIX ".js")
 

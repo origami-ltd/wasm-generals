@@ -198,6 +198,30 @@ if (!crossOriginIsolated) {
   // SharedArrayBuffer is what makes streaming possible; without a secure context there is no game.
   setStatus("Open this page over https:// — the browser blocks shared memory otherwise.");
 }
+// Names shown in the LAN lobby. Index 1 and 2 are the build's own, the rest are the general's
+// callouts everyone who played this game hears in their sleep.
+const LAN_NAMES = [
+  "", "emscripten", "wasm", "Reporting", "YesSir", "MoveOut", "Affirmative", "Rockets",
+  "OnTheWay", "TargetSighted", "ForTheMotherland", "DeathFromAbove", "AtOnce", "IObey",
+  "ChinaWillGrow", "GLAWillPrevail", "USAWillProtect", "AwaitingOrders", "InPosition",
+  "TakingFire", "ChargeTheAttack", "ScudLaunch", "AirForceOne", "Overlord", "Toxin",
+];
+
+/** First free name, so tabs opened in order read emscripten, wasm, Reporting… */
+function nextLanClient(): number {
+  const used = new Set(
+    (localStorage.getItem("generalsX.lanUsed") ?? "").split(",").filter(Boolean).map(Number),
+  );
+  for (let index = 1; index < LAN_NAMES.length; index += 1) {
+    if (!used.has(index)) {
+      used.add(index);
+      localStorage.setItem("generalsX.lanUsed", [...used].join(","));
+      return index;
+    }
+  }
+  return Math.floor(Math.random() * 254) + 1;
+}
+
 const streamer = new ArchiveStreamer(log);
 let module: EmscriptenModule | undefined;
 
@@ -291,16 +315,14 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
   frame.dataset.ready = "true";
   // Every client needs its own LAN name: the lobby hides games hosted by a player with the same
   // name, so two tabs called "emscripten" can never see each other. sessionStorage is per tab, so
-  // two tabs on one machine get different ids and can play each other.
+  // two tabs on one machine get different names and can play each other.
   const stored = sessionStorage.getItem("generalsX.lanClient");
-  const lanClient = Number(query.get("lanClient") ?? stored ?? 0)
-    || Math.floor(Math.random() * 254) + 1;
+  const lanClient = Number(query.get("lanClient") ?? stored ?? 0) || nextLanClient();
   sessionStorage.setItem("generalsX.lanClient", String(lanClient));
+  const label = LAN_NAMES[lanClient] ?? `Player${lanClient}`;
   const nameLan = setInterval(() => {
-    if (module?._GeneralsXLanSetIdentity?.(lanClient)) clearInterval(nameLan);
+    if (module?.ccall?.("GeneralsXLanSetName", "number", ["string"], [label])) clearInterval(nameLan);
   }, 500);
-  // Guests need crossOriginIsolated (SharedArrayBuffer) to stream, so only offer the link where it works.
-  el("share").hidden = false;
   setStatus("Running");
   fitCanvas();
   if (soundMuted) {

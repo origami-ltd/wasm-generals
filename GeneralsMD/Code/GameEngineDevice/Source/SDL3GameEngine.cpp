@@ -123,6 +123,18 @@ extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXLanSetIdentity(Int client)
 	return TRUE;
 }
 
+// GeneralsX @feature Codex 06/08/2026 Let the page choose the lobby name (ASCII, page-supplied).
+extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXLanSetName(const char *label)
+{
+	if (TheLAN == nullptr || label == nullptr || label[0] == '\0')
+		return FALSE;
+	AsciiString ascii(label);
+	UnicodeString name;
+	name.translate(ascii);
+	TheLAN->RequestSetName(name);
+	return TRUE;
+}
+
 extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXLanHost()
 {
 	if (TheLAN == nullptr || TheLAN->GetMyGame() != nullptr)
@@ -438,6 +450,10 @@ void SDL3GameEngine::execute(void)
 	// GeneralsX @port Codex 04/08/2026 Let Chrome own frame scheduling and keep the engine alive.
 	TheFramePacer->reset();
 	emscripten_set_main_loop_arg(browserFrame, this, 0, true);
+	// GeneralsX @bugfix Codex 06/08/2026 requestAnimationFrame stops in a window that is unfocused or
+	// occluded (macOS marks background windows occluded), which freezes one LAN client while its peer
+	// keeps simulating — the match then starts desynced. setTimeout keeps stepping regardless of focus.
+	emscripten_set_main_loop_timing(EM_TIMING_SETTIMEOUT, 16);
 #else
 	GameEngine::execute();
 	fprintf(stderr, "INFO: SDL3GameEngine::execute() - exited main loop\n");

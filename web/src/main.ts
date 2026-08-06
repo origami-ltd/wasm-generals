@@ -285,6 +285,8 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
   module = this;
   (globalThis as unknown as { __gx: EmscriptenModule }).__gx = this;
   frame.dataset.ready = "true";
+  // Guests need crossOriginIsolated (SharedArrayBuffer) to stream, so only offer the link where it works.
+  el("share").hidden = !crossOriginIsolated;
   setStatus("Running");
   fitCanvas();
   if (soundMuted) {

@@ -35,7 +35,7 @@
     }
 
     .hud-button {
-        @apply min-h-11 cursor-pointer px-4 text-[13px] uppercase tracking-[0.1em] text-hud-accent;
+        @apply min-h-10 cursor-pointer px-2.5 text-[11px] uppercase tracking-[0.06em] text-hud-accent sm:min-h-11 sm:px-4 sm:text-[13px] sm:tracking-[0.1em];
         position: relative;
         isolation: isolate;
         overflow: hidden;

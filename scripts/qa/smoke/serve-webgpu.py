@@ -153,7 +153,8 @@ document.getElementById("log").textContent =
                 address = "127.0.0.1"
             finally:
                 probe.close()
-            body = json.dumps({"url": f"https://{address}:{self.server.server_address[1]}/"}).encode()
+            scheme = "https" if isinstance(getattr(self.connection, "context", None), object) and hasattr(self.connection, "cipher") else "http"
+            body = json.dumps({"url": f"{scheme}://{address}:{self.server.server_address[1]}/"}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))

@@ -56,15 +56,18 @@ function log(line: string): void {
 }
 
 // sendBeacon silently drops payloads over ~64KB, which loses exactly the early boot lines.
+let logDead = false;
 function shipLog(useBeacon = false): void {
   if (!pendingLines.length) return;
+  if (logDead) { pendingLines.length = 0; return; }
   const chunk = `${pendingLines.join("\n")}\n`;
   pendingLines.length = 0;
   if (useBeacon) {
     navigator.sendBeacon("/GeneralsXLog", chunk);
     return;
   }
-  shipChain = shipChain.then(() => fetch("/GeneralsXLog", { method: "POST", body: chunk }).catch(() => {}));
+  shipChain = shipChain.then(() => fetch("/GeneralsXLog", { method: "POST", body: chunk })
+    .catch(() => { logDead = true; })); // static hosting: stop retrying a sink that is not there
 }
 setInterval(() => shipLog(), 2000);
 addEventListener("pagehide", () => shipLog(true));
@@ -135,10 +138,14 @@ el("reset").addEventListener("click", () => {
 // Share the running host with players on the same network: they stream the archives from here.
 el("share").addEventListener("click", async () => {
   const button = el("share");
-  const { url } = (await (await fetch("/GeneralsXShare")).json()) as { url: string };
-  await navigator.clipboard?.writeText(url).catch(() => {});
   const label = button.textContent;
-  button.textContent = "Link copied";
+  try {
+    const { url } = (await (await fetch("/GeneralsXShare")).json()) as { url: string };
+    await navigator.clipboard?.writeText(url).catch(() => {});
+    button.textContent = "Link copied";
+  } catch {
+    button.textContent = "LAN host only"; // static hosting has no relay to share
+  }
   setTimeout(() => { button.textContent = label; }, 1800);
 });
 
@@ -523,7 +530,8 @@ const config: Record<string, unknown> = {
         })
         .catch((error: Error) => {
           log(`Asset manifest failed: ${error.message}`);
-          instance.removeRunDependency("gx-assets");
+          // Static hosting has no manifest server: ownership comes from the player's own folder.
+          el("firstrun").hidden = false;
         });
     },
     // The game is configured through Options.ini, so the user data dir must survive a reload.

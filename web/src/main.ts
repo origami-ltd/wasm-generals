@@ -194,6 +194,10 @@ el("sound").addEventListener("click", () => setSoundMuted(!soundMuted));
 el("sound").textContent = soundMuted ? "Sound off" : "Sound on";
 
 /* ------------------------------------------------------------------- boot */
+if (!crossOriginIsolated) {
+  // SharedArrayBuffer is what makes streaming possible; without a secure context there is no game.
+  setStatus("Open this page over https:// — the browser blocks shared memory otherwise.");
+}
 const streamer = new ArchiveStreamer(log);
 let module: EmscriptenModule | undefined;
 
@@ -286,7 +290,7 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
   (globalThis as unknown as { __gx: EmscriptenModule }).__gx = this;
   frame.dataset.ready = "true";
   // Guests need crossOriginIsolated (SharedArrayBuffer) to stream, so only offer the link where it works.
-  el("share").hidden = !crossOriginIsolated;
+  el("share").hidden = false;
   setStatus("Running");
   fitCanvas();
   if (soundMuted) {

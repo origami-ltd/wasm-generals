@@ -226,6 +226,10 @@ void MiniAudioManager::update()
 	ScopedFPUGuard fpuGuard;
 
 	AudioManager::update();
+#if defined(__EMSCRIPTEN__)
+	// GeneralsX @bugfix Codex 06/08/2026 No job threads in the browser: drain decode jobs on the main thread.
+	while (ma_resource_manager_process_next_job(&m_resourceManager) == MA_SUCCESS) {}
+#endif
 	setDeviceListenerPosition();
 	processRequestList();
 	processPlayingList();
@@ -808,7 +812,15 @@ void MiniAudioManager::openDevice(void)
 
 	resourceManagerConfig = ma_resource_manager_config_init();
 	resourceManagerConfig.pVFS = (ma_vfs *)&vfs;
+#if defined(__EMSCRIPTEN__)
+	// GeneralsX @bugfix Codex 06/08/2026 Single-threaded wasm build: the default resource manager spawns job
+	// threads, which fails without pthreads and silently disabled the whole audio backend (openDevice bailed
+	// at the first step, release build logs nothing). Run the job queue inline instead.
+	resourceManagerConfig.jobThreadCount = 0;
+	resourceManagerConfig.flags |= MA_RESOURCE_MANAGER_FLAG_NO_THREADING | MA_RESOURCE_MANAGER_FLAG_NON_BLOCKING;
+#endif
 	result = ma_resource_manager_init(&resourceManagerConfig, &m_resourceManager);
+	fprintf(stderr, "AUDIO: ma_resource_manager_init -> %d\n", result);
 	if (result != MA_SUCCESS) {
 		DEBUG_LOG(("MiniAudio: Failed to initialize resource manager: %d\n", result));
 		setOn(false, AudioAffect_All);
@@ -817,7 +829,7 @@ void MiniAudioManager::openDevice(void)
 
 	result = ma_log_init(NULL, &m_log);
 	if (result != MA_SUCCESS) {
-		DEBUG_LOG(("MiniAudio: Failed to initialize log: %d\n", result));
+		fprintf(stderr, "AUDIO: MiniAudio failed to initialize log: %d\n", result);
 		setOn(false, AudioAffect_All);
 		return;
 	}
@@ -832,14 +844,14 @@ void MiniAudioManager::openDevice(void)
 
 	result = ma_context_init(NULL, 0, &contextConfig, &m_context);
 	if (result != MA_SUCCESS) {
-		DEBUG_LOG(("MiniAudio: Failed to initialize context: %d\n", result));
+		fprintf(stderr, "AUDIO: MiniAudio failed to initialize context: %d\n", result);
 		setOn(false, AudioAffect_All);
 		return;
 	}
 
 	result = ma_context_get_devices(&m_context, &m_playbackDevices, &m_playbackDeviceCount, NULL, NULL);
 	if (result != MA_SUCCESS) {
-		DEBUG_LOG(("MiniAudio: Failed to enumerate devices: %d\n", result));
+		fprintf(stderr, "AUDIO: MiniAudio failed to enumerate devices: %d\n", result);
 		ma_context_uninit(&m_context);
 		setOn(false, AudioAffect_All);
 		return;
@@ -850,7 +862,7 @@ void MiniAudioManager::openDevice(void)
 
 	result = ma_engine_init(&engineConfig, &m_engine);
 	if (result != MA_SUCCESS) {
-		DEBUG_LOG(("MiniAudio: Failed to initialize engine: %d\n", result));
+		fprintf(stderr, "AUDIO: MiniAudio failed to initialize engine: %d\n", result);
 		setOn(false, AudioAffect_All);
 		return;
 	}

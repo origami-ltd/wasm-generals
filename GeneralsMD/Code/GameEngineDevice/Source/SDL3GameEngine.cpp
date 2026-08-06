@@ -150,6 +150,18 @@ extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXLanAccept()
 	return TRUE;
 }
 
+// GeneralsX @feature Codex 05/08/2026 Expose the engine's cursor position so the page can draw the game cursor
+// while the pointer is locked (the browser hides the OS cursor under pointer lock).
+extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXMouseX()
+{
+	return TheMouse != nullptr ? TheMouse->getMouseStatus()->pos.x : -1;
+}
+
+extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXMouseY()
+{
+	return TheMouse != nullptr ? TheMouse->getMouseStatus()->pos.y : -1;
+}
+
 // GeneralsX @feature Codex 05/08/2026 Engine-level mute for the browser Sound button.
 // Never patch window.AudioContext for this: doing so wedges MiniAudio init and the game never starts.
 extern "C" EMSCRIPTEN_KEEPALIVE Int GeneralsXSetAudioMuted(Int muted)

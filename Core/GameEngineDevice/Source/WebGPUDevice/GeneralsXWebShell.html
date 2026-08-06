@@ -8,15 +8,19 @@
     <link rel="icon" href="data:,">
     <style>
         :root {
-            --gx-background: #111315;
-            --gx-surface: #1c2024;
-            --gx-surface-raised: #282d32;
-            --gx-border: #626a72;
-            --gx-text: #f4f1e8;
-            --gx-text-muted: #c0c6ca;
-            --gx-accent: #e1a94b;
-            --gx-ready: #77c7b4;
-            --gx-error: #ff8f82;
+            /* GeneralsX @feature Codex 06/08/2026 Jarvis HUD language: near-black blue, cyan primary with glow,
+               orange accent, mono type. Angled cut corners stay (clip-path polygons below). */
+            --gx-background: hsl(210 100% 2%);
+            --gx-surface: hsl(210 100% 3%);
+            --gx-surface-raised: hsl(210 80% 5%);
+            --gx-border: hsl(188 100% 20%);
+            --gx-text: hsl(180 100% 90%);
+            --gx-text-muted: hsl(188 40% 60%);
+            --gx-accent: hsl(188 100% 50%);
+            --gx-accent-warm: hsl(33 100% 50%);
+            --gx-ready: hsl(150 100% 45%);
+            --gx-error: hsl(0 100% 60%);
+            --gx-glow: 0 0 10px hsl(188 100% 50% / .15), inset 0 0 15px hsl(188 100% 50% / .08);
             --gx-cut: 14px;
         }
 
@@ -33,7 +37,10 @@
         }
 
         body {
-            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+            background-image:
+                radial-gradient(ellipse at 50% 0%, hsl(188 100% 50% / .05), transparent 60%),
+                repeating-linear-gradient(0deg, transparent 0 2px, hsl(188 100% 50% / .015) 2px 4px);
         }
 
         button,
@@ -51,7 +58,12 @@
             --gx-cut-surface: var(--gx-surface-raised);
             padding: 0 18px;
             cursor: pointer;
-            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+            color: var(--gx-accent);
+            box-shadow: var(--gx-glow);
+            font-size: 13px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
         }
 
         button:hover {
@@ -75,10 +87,11 @@
             align-items: center;
             justify-content: space-between;
             gap: 24px;
-            min-height: 76px;
-            padding: 14px clamp(16px, 3vw, 40px);
+            min-height: 58px;
+            padding: 8px clamp(16px, 3vw, 40px);
             border-bottom: 1px solid var(--gx-border);
-            background: var(--gx-surface);
+            background: linear-gradient(180deg, hsl(188 100% 50% / .06), transparent), var(--gx-surface);
+            box-shadow: 0 0 18px hsl(188 100% 50% / .12);
         }
 
         .identity {
@@ -89,9 +102,11 @@
 
         .identity h1 {
             margin: 0;
-            font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-            font-size: clamp(22px, 3vw, 30px);
-            letter-spacing: 0.04em;
+            font-size: clamp(20px, 2.4vw, 26px);
+            letter-spacing: 0.14em;
+            color: var(--gx-accent);
+            text-shadow: 0 0 12px hsl(188 100% 50% / .55);
+            text-transform: uppercase;
         }
 
         .identity p {
@@ -118,9 +133,16 @@
         }
 
         main {
-            width: min(1440px, 100%);
-            margin: 0 auto;
-            padding: clamp(14px, 2vw, 28px);
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: calc(100vh - 58px);
+            padding: 10px clamp(12px, 1.5vw, 24px);
+            gap: 10px;
+        }
+
+        .canvas-shell {
+            flex: 1 1 auto;
         }
 
         .runtime-bar {
@@ -133,7 +155,7 @@
             min-height: 52px;
             margin-bottom: 14px;
             padding: 8px 14px;
-            clip-path: polygon(0 0, calc(100% - var(--gx-cut)) 0, 100% var(--gx-cut), 100% 100%, 0 100%);
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--gx-cut)), calc(100% - var(--gx-cut)) 100%, 0 100%);
         }
 
         .status-group,
@@ -191,44 +213,82 @@
             display: grid;
             place-items: center;
             min-height: 240px;
+            padding: 8px;
             overflow: hidden;
-            clip-path: polygon(0 0, calc(100% - var(--gx-cut)) 0, 100% var(--gx-cut), 100% 100%, 0 100%);
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--gx-cut)), calc(100% - var(--gx-cut)) 100%, 0 100%);
         }
 
         canvas {
+            /* Sized by fitCanvas(): CSS max-% rules for replaced grid items size the track to the
+               content and let the game cover the frame lines, so JS owns the letterboxing. */
             display: block;
-            max-width: 100%;
-            max-height: calc(100vh - 190px);
-            width: auto;
-            height: auto;
             border: 0;
             background: #000;
         }
 
-        .overlay-controls {
+        .steam-gate {
             position: absolute;
-            z-index: 3;
-            top: 14px;
-            right: 22px;
-            display: flex;
-            gap: 10px;
+            z-index: 6;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            background: hsl(210 100% 2% / .92);
         }
 
-        .overlay-controls button {
-            --gx-cut-surface: rgb(18 20 22 / 88%);
-            --gx-cut-border: var(--gx-accent);
+        .steam-gate[hidden] {
+            display: none;
+        }
+
+        .steam-gate-panel {
+            max-width: 460px;
+            padding: 28px 32px;
+            border: 1px solid var(--gx-border);
+            background: var(--gx-surface-raised);
+            box-shadow: var(--gx-glow);
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--gx-cut)), calc(100% - var(--gx-cut)) 100%, 0 100%);
+            text-align: center;
+        }
+
+        .steam-gate-panel h2 {
+            margin: 0 0 10px;
             color: var(--gx-accent);
-            font-weight: 650;
-            font-size: 13px;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.12em;
             text-transform: uppercase;
+            text-shadow: 0 0 12px hsl(188 100% 50% / .5);
         }
 
-        .overlay-controls button:hover {
+        .steam-gate-panel p {
+            color: var(--gx-text-muted);
+            font-size: 13px;
+        }
+
+        .steam-gate-status {
+            color: var(--gx-accent-warm);
+            min-height: 1em;
+        }
+
+        .steam-chip {
+            padding: 6px 12px;
+            border-left: 3px solid var(--gx-ready);
+            background: var(--gx-surface-raised);
             color: var(--gx-text);
+            font-size: 12px;
         }
 
-        .canvas-shell[data-ready="false"] .overlay-controls {
+        canvas.pointer-locked {
+            cursor: none !important;
+        }
+
+        .cursor-overlay {
+            position: fixed;
+            z-index: 5;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            image-rendering: pixelated;
+        }
+
+        .cursor-overlay[hidden] {
             display: none;
         }
 
@@ -257,7 +317,7 @@
             left: 12px;
             max-height: min(46vh, 420px);
             padding: 12px;
-            clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
             font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
         }
 
@@ -415,13 +475,21 @@
             <p data-copy="subtitle"></p>
         </div>
         <div class="header-controls">
-            <div class="language-control">
-                <label for="language" data-copy="language"></label>
-                <select id="language">
-                    <option value="en">English</option>
-                    <option value="pt-BR">Português (Brasil)</option>
+            <span id="steam-chip" class="steam-chip" hidden></span>
+            <label class="boot-control">
+                <span data-copy="aspect"></span>
+                <select id="aspect-mode">
+                    <option value="16:9">16:9</option>
+                    <option value="4:3">4:3</option>
                 </select>
-            </div>
+            </label>
+            <label class="boot-control">
+                <span data-copy="boot"></span>
+                <select id="boot-mode">
+                    <option value="fast" data-copy="bootFast"></option>
+                    <option value="full" data-copy="bootFull"></option>
+                </select>
+            </label>
             <button id="sound" type="button" data-copy="soundOn"></button>
             <button id="fullscreen" type="button" data-copy="fullscreen"></button>
         </div>
@@ -439,9 +507,14 @@
         </section>
         <section class="canvas-shell" id="canvas-shell" data-ready="false">
             <canvas id="canvas" tabindex="0"></canvas>
-            <div class="overlay-controls">
-                <button id="sound-overlay" type="button" data-copy="soundOn"></button>
-                <button id="fullscreen-overlay" type="button" data-copy="fullscreen"></button>
+            <img id="cursor-overlay" class="cursor-overlay" alt="" hidden>
+            <div id="steam-gate" class="steam-gate" hidden>
+                <div class="steam-gate-panel">
+                    <h2 data-copy="steamTitle"></h2>
+                    <p data-copy="steamText"></p>
+                    <button id="steam-login" type="button" data-copy="steamButton"></button>
+                    <p class="steam-gate-status" id="steam-gate-status"></p>
+                </div>
             </div>
             <div class="loading-layer" id="loading-layer">
                 <strong data-copy="loadingTitle"></strong>
@@ -467,6 +540,13 @@
                 subtitle: "WebAssembly + WebGPU",
                 language: "Language",
                 fullscreen: "Fullscreen",
+                boot: "Boot",
+                aspect: "Display",
+                bootFast: "Fast start",
+                bootFull: "Full start",
+                steamTitle: "Steam verification",
+                steamText: "Sign in through Steam to prove you own Command & Conquer Generals — Zero Hour before playing.",
+                steamButton: "Sign in through Steam",
                 soundOn: "Sound on",
                 soundOff: "Sound off",
                 loadingTitle: "Preparing the battlefield",
@@ -488,6 +568,13 @@
                 subtitle: "WebAssembly + WebGPU",
                 language: "Idioma",
                 fullscreen: "Tela cheia",
+                boot: "Boot",
+                aspect: "Display",
+                bootFast: "Início rápido",
+                bootFull: "Início completo",
+                steamTitle: "Verificação Steam",
+                steamText: "Entre com a Steam para provar que você possui Command & Conquer Generals — Zero Hour antes de jogar.",
+                steamButton: "Entrar com a Steam",
                 soundOn: "Som ligado",
                 soundOff: "Som desligado",
                 loadingTitle: "Preparando o campo de batalha",
@@ -515,22 +602,25 @@
         const developerConsoleOutput = document.getElementById("developer-console-output");
         const developerConsoleForm = document.getElementById("developer-console-form");
         const developerConsoleInput = document.getElementById("developer-console-input");
-        const languageElement = document.getElementById("language");
         const wasmCapability = document.getElementById("wasm-capability");
         const webgpuCapability = document.getElementById("webgpu-capability");
         const runtimeQuery = new URLSearchParams(window.location.search);
-        const runtimeArguments = ["-noshellmap"];
+        const runtimeArguments = [];
+        // GeneralsX @feature Codex 06/08/2026 Boot flags: fast start (-quickstart, no shell map) or the full
+        // boot with logos and the animated shell-map menu. Persisted; ?boot=fast|full overrides.
+        const bootModeRaw = runtimeQuery.get("boot") || localStorage.getItem("generalsX.bootMode") || "fast";
+        const bootMode = bootModeRaw === "full" ? "full" : "fast";
 
         // GeneralsX @bugfix Codex 05/08/2026 Audio off by default: with the audio manager live the engine never
         // steps logic in the browser (black screen). Opt in with ?sound=1 until that engine bug is fixed.
         // Mute goes through the engine's own audio manager; NEVER wrap window.AudioContext here.
-        const soundEnabled = runtimeQuery.get("sound") === "1";
-        let soundMuted = !soundEnabled;
+        const soundEnabled = runtimeQuery.get("sound") !== "0";
+        let soundMuted = false;
 
         function setSoundMuted(muted) {
             soundMuted = muted;
             Module._GeneralsXSetAudioMuted?.(muted ? 1 : 0);
-            for (const button of document.querySelectorAll("#sound, #sound-overlay")) {
+            for (const button of document.querySelectorAll("#sound")) {
                 button.dataset.copy = muted ? "soundOff" : "soundOn";
             }
             renderCopy();
@@ -581,6 +671,11 @@
             || /^[1-9]\d*$/.test(pauseFrame || "")
             || runtimeQuery.get("test") === "1"
             || isBotStress;
+        if (isAutomatedTest) {
+            runtimeArguments.push("-noshellmap"); // parity paths expect exactly the historical arguments
+        } else if (bootMode === "fast") {
+            runtimeArguments.push("-quickstart", "-noshellmap");
+        }
         if (isAutomatedTest || !soundEnabled) {
             runtimeArguments.push("-noaudio");
         }
@@ -638,7 +733,6 @@
                 element.textContent = text(element.dataset.copy);
             });
             statusElement.textContent = text(statusKey);
-            languageElement.value = locale;
 
             const hasWasm = typeof WebAssembly === "object";
             const hasWebGPU = "gpu" in navigator;
@@ -703,17 +797,25 @@
         window.generalsXBrowserMemoryStats = browserMemoryStats;
 
         // GeneralsX @feature Codex 05/08/2026 Ship the runtime log to the server so crashes leave evidence.
-        let shippedLogLineCount = 0;
-        function shipRuntimeLog() {
-            if (shippedLogLineCount >= runtimeOutputLines.length) {
+        // Queue every line separately: sendBeacon silently drops payloads over ~64KB, which lost the
+        // early boot lines (the ones that matter for init bugs). Batches go out via fetch instead.
+        const pendingShipLines = [];
+        let shipChain = Promise.resolve();
+        function shipRuntimeLog(useBeacon) {
+            if (!pendingShipLines.length) {
                 return;
             }
-            const chunk = runtimeOutputLines.slice(shippedLogLineCount).join("\n") + "\n";
-            shippedLogLineCount = runtimeOutputLines.length;
-            navigator.sendBeacon?.("/GeneralsXLog", chunk);
+            const chunk = `${pendingShipLines.join("\n")}\n`;
+            pendingShipLines.length = 0;
+            if (useBeacon) {
+                navigator.sendBeacon?.("/GeneralsXLog", chunk);
+                return;
+            }
+            shipChain = shipChain.then(() =>
+                fetch("/GeneralsXLog", { method: "POST", body: chunk }).catch(() => {}));
         }
-        setInterval(shipRuntimeLog, 5000);
-        window.addEventListener("pagehide", shipRuntimeLog);
+        setInterval(() => shipRuntimeLog(false), 2000);
+        window.addEventListener("pagehide", () => shipRuntimeLog(true));
 
         async function enforceBrowserMemoryLimit() {
             if (browserMemoryMeasurementPending || browserMemoryStats.tripped) {
@@ -768,6 +870,7 @@
             if (line.length !== rawLine.length) {
                 runtimeLogStats.truncatedLines += 1;
             }
+            pendingShipLines.push(line);
 
             if (line === lastRuntimeOutputLine && runtimeOutputLines.length) {
                 lastRuntimeOutputRepeatCount += 1;
@@ -845,37 +948,38 @@
             retainRuntimeOutput(line, method);
         }
 
-        languageElement.addEventListener("change", () => {
-            locale = languageElement.value;
-            renderCopy();
-        });
-
         // GeneralsX @bugfix Codex 05/08/2026 Never request pointer lock: the browser hides the cursor while locked,
         // and this build draws the cursor through the OS (RM_WINDOWS), so locking makes the pointer vanish.
         // Fullscreen already keeps the mouse inside the game because the canvas covers the screen.
         function enterFullscreen() {
-            if (Module.requestFullscreen) {
-                Module.requestFullscreen(false, false);
-            } else {
-                canvas.requestFullscreen().catch(() => {});
-            }
+            // Fullscreen the framed shell, not the bare canvas: the drawn-cursor overlay must live inside
+            // the fullscreened subtree or the pointer turns invisible under pointer lock in fullscreen.
+            canvasShell.requestFullscreen().catch(() => {});
         }
 
         document.getElementById("fullscreen").addEventListener("click", enterFullscreen);
-        document.getElementById("fullscreen-overlay").addEventListener("click", enterFullscreen);
+        // GeneralsX @bugfix Codex 05/08/2026 Toggle the engine's own audio, never reload the page.
         function toggleSound() {
-            if (!soundEnabled) {
-                const query = new URLSearchParams(window.location.search);
-                query.set("sound", "1");
-                window.location.search = query.toString();
-                return;
-            }
             setSoundMuted(!soundMuted);
         }
 
+        const aspectSelect = document.getElementById("aspect-mode");
+        aspectSelect.value = localStorage.getItem("generalsX.aspect") === "4:3" ? "4:3" : "16:9";
+        aspectSelect.addEventListener("change", () => {
+            localStorage.setItem("generalsX.aspect", aspectSelect.value);
+            localStorage.setItem("generalsX.aspectApply", "1");
+            window.location.reload();
+        });
+
+        const bootSelect = document.getElementById("boot-mode");
+        bootSelect.value = bootMode;
+        bootSelect.addEventListener("change", () => {
+            localStorage.setItem("generalsX.bootMode", bootSelect.value);
+            window.location.reload();
+        });
+
         document.getElementById("sound").addEventListener("click", toggleSound);
-        document.getElementById("sound-overlay").addEventListener("click", toggleSound);
-        for (const button of document.querySelectorAll("#sound, #sound-overlay")) {
+        for (const button of document.querySelectorAll("#sound")) {
             button.dataset.copy = soundMuted ? "soundOff" : "soundOn";
         }
 
@@ -885,8 +989,85 @@
             }
         });
 
+        // GeneralsX @bugfix Codex 06/08/2026 Letterbox the game inside the HUD frame in JS: the frame lines
+        // must stay visible around the render at any window size, and CSS cannot express that for a canvas
+        // whose attribute size the engine controls.
+        function fitCanvas() {
+            const availWidth = canvasShell.clientWidth - 16;
+            const availHeight = canvasShell.clientHeight - 16;
+            const width = canvas.width || 1;
+            const height = canvas.height || 1;
+            const scale = Math.min(availWidth / width, availHeight / height);
+            canvas.style.width = `${Math.max(1, Math.floor(width * scale))}px`;
+            canvas.style.height = `${Math.max(1, Math.floor(height * scale))}px`;
+        }
+        new ResizeObserver(fitCanvas).observe(canvasShell);
+        new MutationObserver(fitCanvas).observe(canvas, { attributes: true, attributeFilter: ["width", "height"] });
+        window.addEventListener("resize", fitCanvas);
+        fitCanvas();
+
         canvas.addEventListener("contextmenu", (event) => event.preventDefault());
-        canvas.addEventListener("pointerdown", () => canvas.focus());
+        // GeneralsX @feature Codex 05/08/2026 Keep the pointer inside the game until Esc, native-style.
+        // Pointer lock is the only browser confinement, but it hides the OS cursor and this build draws the
+        // cursor through the OS — so while locked, the page draws the game's cursor image (published by SDL as
+        // an inline CSS cursor) at the engine's authoritative position (GeneralsXMouseX/Y exports).
+        const cursorOverlay = document.getElementById("cursor-overlay");
+        let overlayCursorSource = "";
+
+        function parseCssCursor(value) {
+            const match = /url\(\s*"?([^")]+)"?\s*\)(?:\s+(\d+)\s+(\d+))?/.exec(value || "");
+            if (!match) {
+                return null;
+            }
+            return { url: match[1], hotX: Number(match[2] || 0), hotY: Number(match[3] || 0) };
+        }
+
+        function drawLockedCursor() {
+            if (document.pointerLockElement !== canvas) {
+                return;
+            }
+            const x = Module._GeneralsXMouseX?.() ?? -1;
+            const y = Module._GeneralsXMouseY?.() ?? -1;
+            const cursor = parseCssCursor(canvas.style.cursor);
+            if (cursor && x >= 0 && y >= 0) {
+                if (cursor.url !== overlayCursorSource) {
+                    overlayCursorSource = cursor.url;
+                    cursorOverlay.src = cursor.url;
+                }
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = rect.width / (canvas.width || 1);
+                const scaleY = rect.height / (canvas.height || 1);
+                cursorOverlay.hidden = false;
+                cursorOverlay.style.transform =
+                    `translate(${rect.left + x * scaleX - cursor.hotX}px, ${rect.top + y * scaleY - cursor.hotY}px)`;
+            } else {
+                cursorOverlay.hidden = true;
+            }
+            requestAnimationFrame(drawLockedCursor);
+        }
+
+        function setPointerLocked(locked) {
+            canvas.classList.toggle("pointer-locked", locked);
+            if (locked) {
+                drawLockedCursor();
+            } else {
+                cursorOverlay.hidden = true;
+            }
+        }
+
+        document.addEventListener("pointerlockchange", () => {
+            setPointerLocked(document.pointerLockElement === canvas);
+        });
+        document.addEventListener("pointerlockerror", () => {
+            setPointerLocked(false);
+        });
+
+        canvas.addEventListener("pointerdown", () => {
+            canvas.focus();
+            if (!document.pointerLockElement && !isAutomatedTest && canvasShell.dataset.ready === "true") {
+                canvas.requestPointerLock?.();
+            }
+        });
 
         const consoleCommands = [
             "args",
@@ -1216,6 +1397,194 @@
         const modulePreRun = [];
         const modulePostRun = [];
 
+        // GeneralsX @feature Codex 05/08/2026 Stream the game archives instead of packaging them into the wasm
+        // bundle. Reads must be genuinely synchronous: sync XHR is banned on the main thread, and Asyncify cannot
+        // unwind through the invoke_* JS frames the engine's try/catch scopes create. So a worker fetches 4 MiB
+        // chunks into a SharedArrayBuffer while the main thread spin-waits (COOP/COEP already gives us SAB), and
+        // an LRU keeps the engine's many small reads off the network.
+        const streamChunkSize = 4 * 1024 * 1024;
+        const streamCacheLimit = 192 * 1024 * 1024;
+        const streamCache = new Map();
+        const streamWorkerSource = `
+            postMessage("ready");
+            onmessage = async (event) => {
+                const { url, start, end, sab } = event.data;
+                const state = new Int32Array(sab, 0, 2);
+                const data = new Uint8Array(sab, 8);
+                try {
+                    const response = await fetch(url, { headers: { Range: "bytes=" + start + "-" + end } });
+                    if (!response.ok && response.status !== 206) {
+                        throw new Error("HTTP " + response.status);
+                    }
+                    const bytes = new Uint8Array(await response.arrayBuffer());
+                    data.set(bytes.subarray(0, data.length));
+                    state[1] = Math.min(bytes.length, data.length);
+                    Atomics.store(state, 0, 1);
+                } catch (error) {
+                    state[1] = 0;
+                    Atomics.store(state, 0, 2);
+                }
+            };`;
+        // The worker MUST be live before main() starts: once the engine spin-waits, the main thread never
+        // yields, and a not-yet-started worker can never start (the deadlock PTHREAD_POOL_SIZE exists for).
+        let streamWorker = null;
+        let streamBuffer = null;
+        let streamWorkerReady = null;
+        if (window.crossOriginIsolated) {
+            streamWorker = new Worker(URL.createObjectURL(
+                new Blob([streamWorkerSource], { type: "text/javascript" })));
+            streamBuffer = new SharedArrayBuffer(streamChunkSize + 8);
+            streamWorkerReady = new Promise((resolve) => {
+                streamWorker.addEventListener("message", resolve, { once: true });
+            });
+        }
+
+        function fetchStreamChunkSync(url, index) {
+            if (!streamWorker) {
+                appendOutput(["SharedArrayBuffer unavailable: archives cannot stream."], "error");
+                return new Uint8Array(0);
+            }
+            const state = new Int32Array(streamBuffer, 0, 2);
+            Atomics.store(state, 0, 0);
+            const start = index * streamChunkSize;
+            streamWorker.postMessage({
+                url: new URL(url, window.location.href).href,
+                start,
+                end: start + streamChunkSize - 1,
+                sab: streamBuffer
+            });
+            const deadline = Date.now() + 60000;
+            while (Atomics.load(state, 0) === 0) {
+                if (Date.now() > deadline) {
+                    appendOutput([`Archive fetch timed out: ${url} chunk ${index}`], "error");
+                    return new Uint8Array(0);
+                }
+            }
+            if (Atomics.load(state, 0) !== 1) {
+                appendOutput([`Archive fetch failed: ${url} chunk ${index}`], "error");
+                return new Uint8Array(0);
+            }
+            return new Uint8Array(streamBuffer.slice(8, 8 + state[1]));
+        }
+
+        function takeStreamChunk(url, index) {
+            const key = `${url}#${index}`;
+            const cached = streamCache.get(key);
+            if (cached) {
+                streamCache.delete(key); // re-insert to mark most recently used
+                streamCache.set(key, cached);
+                return cached;
+            }
+            const chunk = fetchStreamChunkSync(url, index);
+            streamCache.set(key, chunk);
+            let total = 0;
+            for (const value of streamCache.values()) {
+                total += value.length;
+            }
+            while (total > streamCacheLimit && streamCache.size > 1) {
+                const oldest = streamCache.keys().next().value;
+                total -= streamCache.get(oldest).length;
+                streamCache.delete(oldest);
+            }
+            return chunk;
+        }
+
+        function mountStreamedArchive(mount, name, url, size) {
+            const node = FS.createFile(mount, name, {}, true, false);
+            Object.defineProperty(node, "usedBytes", { get: () => size });
+            node.stream_ops = {
+                llseek: (stream, offset, whence) => {
+                    let position = offset;
+                    if (whence === 1) {
+                        position += stream.position;
+                    } else if (whence === 2) {
+                        position = size + offset;
+                    }
+                    if (position < 0) {
+                        throw new FS.ErrnoError(28);
+                    }
+                    return position;
+                },
+                read: (stream, buffer, offset, length, position) => {
+                    const end = Math.min(size, position + length);
+                    if (position >= end) {
+                        return 0;
+                    }
+                    const firstChunk = Math.floor(position / streamChunkSize);
+                    const lastChunk = Math.floor((end - 1) / streamChunkSize);
+                    let written = 0;
+                    for (let index = firstChunk; index <= lastChunk; index += 1) {
+                        const chunk = takeStreamChunk(url, index);
+                        const chunkStart = index * streamChunkSize;
+                        const from = Math.max(position, chunkStart) - chunkStart;
+                        const to = Math.min(end, chunkStart + chunk.length) - chunkStart;
+                        if (to <= from) {
+                            break; // short chunk: fetch failed or EOF
+                        }
+                        buffer.set(chunk.subarray(from, to), offset + written);
+                        written += to - from;
+                    }
+                    return written;
+                }
+            };
+        }
+
+        // GeneralsX @feature Codex 06/08/2026 Ownership gate: the game does not start until the server-side
+        // Steam session confirms login (and ownership when a Steam API key is configured). Fails open when the
+        // server has the gate disabled so local play keeps working.
+        modulePreRun.push(() => {
+            const dependency = "generalsx-steam-gate";
+            addRunDependency(dependency);
+            const gate = document.getElementById("steam-gate");
+            const gateStatus = document.getElementById("steam-gate-status");
+            const chip = document.getElementById("steam-chip");
+            document.getElementById("steam-login").addEventListener("click", () => {
+                window.location.href = "/GeneralsXSteamLogin";
+            });
+            fetch("/GeneralsXSteamSession")
+                .then((response) => response.json())
+                .then((session) => {
+                    if (!session.gate) {
+                        removeRunDependency(dependency);
+                        return;
+                    }
+                    if (session.authenticated && session.owns) {
+                        chip.textContent = `STEAM ✓ ${session.name || ""}`.trim();
+                        chip.hidden = false;
+                        removeRunDependency(dependency);
+                        return;
+                    }
+                    gate.hidden = false;
+                    if (session.authenticated && !session.owns) {
+                        gateStatus.textContent = session.reason
+                            || "Ownership not confirmed on this Steam account.";
+                    }
+                    // dependency intentionally never removed: no proof, no game.
+                })
+                .catch(() => removeRunDependency(dependency));
+        });
+
+        modulePreRun.push(() => {
+            const dependency = "generalsx-assets";
+            addRunDependency(dependency);
+            Promise.all([
+                fetch("/GeneralsXAssets").then((response) => response.json()),
+                streamWorkerReady || Promise.resolve()
+            ])
+                .then(([entries]) => {
+                    for (const entry of entries) {
+                        FS.mkdirTree(entry.mount);
+                        mountStreamedArchive(entry.mount, entry.name, entry.url, entry.size);
+                    }
+                    const total = entries.reduce((sum, entry) => sum + entry.size, 0);
+                    appendOutput([
+                        `Streaming ${entries.length} game archives (${(total / 1073741824).toFixed(1)} GB) on demand.`
+                    ], "log");
+                })
+                .catch((error) => appendOutput([`Asset manifest failed: ${error.message}`], "error"))
+                .finally(() => removeRunDependency(dependency));
+        });
+
         // GeneralsX @feature Codex 05/08/2026 The game is configured by Options.ini, not the command line, so the
         // user data dir has to survive a page load. IDBFS backs it with browser storage; syncfs moves it both ways.
         const generalsXUserDataPath = "/home/web_user/.local/share/GeneralsX/GeneralsZH";
@@ -1257,6 +1626,17 @@
                     // Escape hatch: ?resetOptions=1 restores the shipped defaults if in-game settings go bad.
                     if (!hasOptions || runtimeQuery.get("resetOptions") === "1") {
                         FS.writeFile(optionsPath, defaultOptionsIni);
+                    }
+                    // Aspect selector: apply once when the player changed it, then leave in-game choices alone.
+                    if (localStorage.getItem("generalsX.aspectApply") === "1") {
+                        const resolution = localStorage.getItem("generalsX.aspect") === "4:3"
+                            ? "Resolution = 1024 768" : "Resolution = 1280 720";
+                        let text = FS.readFile(optionsPath, { encoding: "utf8" });
+                        text = /^Resolution = /m.test(text)
+                            ? text.replace(/^Resolution = .*$/m, resolution)
+                            : `${text}${resolution}\n`;
+                        FS.writeFile(optionsPath, text);
+                        localStorage.removeItem("generalsX.aspectApply");
                     }
                     userDataReady = true;
                     removeRunDependency(dependency);

@@ -1230,8 +1230,10 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 
 	setLoadingMap( TRUE );
 #if defined(__EMSCRIPTEN__)
-	// GeneralsX @bugfix Codex 06/08/2026 The blocking map load starves the WebAudio callback, so the browser
-	// machine-guns the last rendered quantum (the menu click) for the whole load. Suspend the device until done.
+	// The blocking map load starves the WebAudio callback and the browser machine-guns the last
+	// rendered quantum — the menu click. Give that click time to actually play out, then silence the
+	// device for the rest of the load. ASYNCIFY makes the wait resumable.
+	emscripten_sleep(250);
 	EM_ASM({ if (window.miniaudio) window.miniaudio.devices.forEach(function(d) { if (d && d.webaudio) d.webaudio.suspend(); }); });
 #endif
 

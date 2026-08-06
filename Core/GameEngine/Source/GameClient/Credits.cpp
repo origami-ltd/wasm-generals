@@ -157,6 +157,35 @@ void CreditsManager::load()
 	// Read from INI all the ControlBarSchemes
 	ini.loadFileDirectory( "Data\\INI\\Credits", INI_LOAD_OVERWRITE, nullptr );
 
+	// GeneralsX @feature Codex 06/08/2026 Credit the browser port ahead of the original roll.
+	{
+		struct PortCredit { Int style; const WideChar *text; };
+		static const PortCredit portCredits[] = {
+			{ CREDIT_STYLE_TITLE,    L"WEBASSEMBLY PORT" },
+			{ CREDIT_STYLE_POSITION, L"Erasmo \"ebellumat\" Bellumat" },
+			{ CREDIT_STYLE_NORMAL,   L"github.com/ebellumat" },
+			{ CREDIT_STYLE_NORMAL,   L"lbj.erasmo@gmail.com" },
+			{ CREDIT_STYLE_BLANK,    L"" },
+			{ CREDIT_STYLE_POSITION, L"Base source" },
+			{ CREDIT_STYLE_NORMAL,   L"github.com/ebellumat/GeneralsX" },
+			{ CREDIT_STYLE_BLANK,    L"" },
+			{ CREDIT_STYLE_POSITION, L"Special thanks" },
+			{ CREDIT_STYLE_NORMAL,   L"github.com/fbraz3" },
+			{ CREDIT_STYLE_BLANK,    L"" },
+			{ CREDIT_STYLE_BLANK,    L"" },
+		};
+		CreditsLineList portLines;
+		for (const PortCredit &entry : portCredits)
+		{
+			CreditsLine *line = NEW CreditsLine;
+			line->m_style = entry.style;
+			line->m_text = entry.text;
+			portLines.push_back(line);
+		}
+		m_creditLineList.insert(m_creditLineList.begin(), portLines.begin(), portLines.end());
+		m_creditLineListIt = m_creditLineList.begin();
+	}
+
 	if(m_scrollRatePerFrames <=0)
 		m_scrollRatePerFrames = 1;
 	if(m_scrollRate <=0)

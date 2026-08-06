@@ -511,6 +511,11 @@ void MainMenuInit( WindowLayout *layout, void *userData )
 	networkID = TheNameKeyGenerator->nameToKey( "MainMenu.wnd:ButtonNetwork" );
 	optionsID = TheNameKeyGenerator->nameToKey( "MainMenu.wnd:ButtonOptions" );
 	exitID = TheNameKeyGenerator->nameToKey( "MainMenu.wnd:ButtonExit" );
+#if defined(__EMSCRIPTEN__)
+	// Nothing to exit to in a browser tab: closing the page is the quit button.
+	if (GameWindow *exitButton = TheWindowManager->winGetWindowFromId( nullptr, exitID ))
+		exitButton->winHide( TRUE );
+#endif
 	motdID = TheNameKeyGenerator->nameToKey( "MainMenu.wnd:ButtonMOTD" );
 	worldBuilderID = TheNameKeyGenerator->nameToKey( "MainMenu.wnd:ButtonWorldBuilder" );
 	getUpdateID = TheNameKeyGenerator->nameToKey( "MainMenu.wnd:ButtonGetUpdate" );

@@ -394,7 +394,10 @@ def main() -> int:
 
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(args.cert, args.key)
-        server.socket = context.wrap_socket(server.socket, server_side=True)
+        # Handshake lazily in the worker thread: wrapping the listening socket eagerly makes accept()
+        # perform the handshake, so one slow client blocks every new connection.
+        server.socket = context.wrap_socket(server.socket, server_side=True,
+                                            do_handshake_on_connect=False)
         scheme = "https"
     print(f"Serving {directory} at {scheme}://{args.bind}:{args.port}/")
     try:

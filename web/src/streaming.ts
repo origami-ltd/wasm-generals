@@ -12,7 +12,7 @@ import type { EmscriptenFS, EmscriptenModule } from "./types";
 // 4 MiB chunks meant a 1 KiB read cost 4 MiB and only 48 blocks fitted the cache, so a map load
 // thrashed and pulled ~35 GB over ~9000 requests. Smaller blocks, far more of them cached.
 const CHUNK_SIZE = 256 * 1024;
-const CACHE_LIMIT = 384 * 1024 * 1024;
+const CACHE_LIMIT = 640 * 1024 * 1024;
 const READAHEAD = 8; // chunks pulled per miss
 
 export interface ArchiveEntry {
@@ -133,6 +133,40 @@ export class ArchiveStreamer {
       this.cache.delete(oldest);
     }
     return chunk;
+  }
+
+  /** Pull an archive into the cache in the background so reads of it never block the engine.
+      Audio is the case that matters: a sound played for the first time otherwise stalls the frame
+      on a synchronous fetch, which on a slow link is heard as a stutter. */
+  async warm(entries: ArchiveEntry[], budget = 256 * 1024 * 1024): Promise<void> {
+    let spent = 0;
+    for (const entry of entries) {
+      for (let index = 0; index * CHUNK_SIZE < entry.size; index += READAHEAD) {
+        if (spent >= budget) return;
+        const key = `${entry.url}#${index}`;
+        if (this.cache.has(key)) continue;
+        const start = index * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE * READAHEAD, entry.size) - 1;
+        try {
+          const bytes = entry.handle
+            ? new Uint8Array(await (await entry.handle.getFile()).slice(start, end + 1).arrayBuffer())
+            : new Uint8Array(await (await fetch(entry.url, {
+                headers: { Range: `bytes=${start}-${end}` },
+              })).arrayBuffer());
+          for (let offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {
+            const partKey = `${entry.url}#${index + offset / CHUNK_SIZE}`;
+            if (this.cache.has(partKey)) continue;
+            const part = bytes.subarray(offset, Math.min(offset + CHUNK_SIZE, bytes.length));
+            this.cache.set(partKey, part);
+            this.cached += part.length;
+          }
+          spent += bytes.length;
+        } catch {
+          return; // link died; reads fall back to fetching on demand
+        }
+        await new Promise((resolve) => setTimeout(resolve, 0)); // stay off the engine's back
+      }
+    }
   }
 
   mount(module: EmscriptenModule, entry: ArchiveEntry): void {

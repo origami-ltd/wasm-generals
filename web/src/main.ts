@@ -230,6 +230,12 @@ function nextLanClient(): number {
 }
 
 const streamer = new ArchiveStreamer(log);
+
+/** Sound and music first: those are the reads that would otherwise stall a frame mid-battle. */
+function warmAudio(entries: { name: string }[]): void {
+  const audio = entries.filter((entry) => /^(audio|music|speech)/i.test(entry.name));
+  void streamer.warm(audio as never).then(() => log("Audio archives cached locally."));
+}
 let module: EmscriptenModule | undefined;
 
 el("cap-wasm").textContent = typeof WebAssembly === "object" ? "WASM ready" : "WASM missing";
@@ -255,6 +261,7 @@ const config: Record<string, unknown> = {
           // A picked install wins: read straight from the player's disk, server not involved.
           if (local.length) {
             for (const entry of local) streamer.mount(instance, entry);
+            warmAudio(local);
             log(`Streaming ${local.length} archives from your selected folders.`);
             instance.removeRunDependency("gx-assets");
             return;
@@ -272,6 +279,7 @@ const config: Record<string, unknown> = {
             return; // dependency stays: no game files, no game
           }
           for (const entry of manifest.entries) streamer.mount(instance, entry);
+          warmAudio(manifest.entries);
           const total = manifest.entries.reduce((sum, entry) => sum + entry.size, 0);
           log(`Streaming ${manifest.entries.length} game archives (${(total / 2 ** 30).toFixed(1)} GB) on demand.`);
           instance.removeRunDependency("gx-assets");

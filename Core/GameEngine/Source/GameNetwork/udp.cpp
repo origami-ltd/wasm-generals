@@ -101,7 +101,9 @@ EM_JS(Int, GeneralsXWebLanBind, (UnsignedInt ip, UnsignedShort port), {
 			payload
 		});
 		state.incomingBytes += payload.byteLength;
-		while (state.incoming.length > 1024 || state.incomingBytes > 4 * 1024 * 1024) {
+		// The engine cannot drain this while a map load blocks the main thread; a small cap dropped the
+		// peer's frame data there, and both sides then waited forever for packets nobody would resend.
+		while (state.incoming.length > 16384 || state.incomingBytes > 32 * 1024 * 1024) {
 			state.incomingBytes -= state.incoming.shift().payload.byteLength;
 		}
 	});

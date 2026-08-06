@@ -45,8 +45,29 @@ addEventListener("pagehide", () => shipLog(true));
 
 // Emscripten clears its own status when loading finishes, which would blank ours right after
 // onRuntimeInitialized set it — keep the last meaningful text instead.
+const detail = el("status-detail");
+const track = el("progress-track");
+const bar = el("progress-bar");
+
+/** Everything the page is doing lives here: headline, detail line, and a bar when there is a ratio. */
+function report(headline: string, note = "", ratio?: number): void {
+  if (headline) status.textContent = headline;
+  detail.textContent = note;
+  track.hidden = ratio === undefined;
+  if (ratio !== undefined) bar.style.width = `${Math.round(Math.min(1, Math.max(0, ratio)) * 100)}%`;
+}
+
+// Emscripten clears its own status when loading finishes, which would blank ours right after
+// onRuntimeInitialized set it — keep the last meaningful text instead.
 const setStatus = (text: string): void => {
-  status.textContent = text || status.textContent || "";
+  const match = /\((\d+)\/(\d+)\)/.exec(text);
+  if (match) {
+    const done = Number(match[1]);
+    const total = Number(match[2]);
+    report("Loading runtime", `${(done / 2 ** 20).toFixed(1)} / ${(total / 2 ** 20).toFixed(1)} MB`, done / total);
+    return;
+  }
+  if (text) report(text);
 };
 
 /* --------------------------------------------------------- boot / display */
@@ -229,12 +250,20 @@ function nextLanClient(): number {
   return Math.floor(Math.random() * (LAN_NAMES.length - 1)) + 1;
 }
 
-const streamer = new ArchiveStreamer(log);
+const streamer = new ArchiveStreamer(log, (note, ratio) => report("", note, ratio));
 
 /** Sound and music first: those are the reads that would otherwise stall a frame mid-battle. */
-function warmAudio(entries: { name: string }[]): void {
+function warmAudio(entries: { name: string; size: number }[]): void {
   const audio = entries.filter((entry) => /^(audio|music|speech)/i.test(entry.name));
-  void streamer.warm(audio as never).then(() => log("Audio archives cached locally."));
+  const total = audio.reduce((sum, entry) => sum + entry.size, 0);
+  void streamer
+    .warm(audio as never, total, (done, name) =>
+      report("", `Caching audio · ${name} · ${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
+        done / total))
+    .then(() => {
+      report("Running", "");
+      log("Audio archives cached locally.");
+    });
 }
 let module: EmscriptenModule | undefined;
 
@@ -273,6 +302,7 @@ const config: Record<string, unknown> = {
             return; // dependency stays: booting now would mean booting with no archives
           }
           const manifest = await loadManifest();
+          report("Mounting archives", `${manifest.entries.length} files`);
           if (manifest.missing) {
             el("firstrun").hidden = false;
             log("Game archives not found — waiting for the player to point at their install.");
@@ -335,6 +365,7 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
   const lanClient = Number(query.get("lanClient") ?? stored ?? 0) || nextLanClient();
   sessionStorage.setItem("generalsX.lanClient", String(lanClient));
   el("share").hidden = false;
+  report("Running", "");
   const label = LAN_NAMES[lanClient] ?? `Player${lanClient}`;
   const nameLan = setInterval(() => {
     if (module?.ccall?.("GeneralsXLanSetName", "number", ["string"], [label])) clearInterval(nameLan);

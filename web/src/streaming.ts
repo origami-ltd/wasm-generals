@@ -12,7 +12,7 @@ import type { EmscriptenFS, EmscriptenModule } from "./types";
 // 4 MiB chunks meant a 1 KiB read cost 4 MiB and only 48 blocks fitted the cache, so a map load
 // thrashed and pulled ~35 GB over ~9000 requests. Smaller blocks, far more of them cached.
 const CHUNK_SIZE = 256 * 1024;
-const CACHE_LIMIT = 640 * 1024 * 1024;
+const CACHE_LIMIT = 1024 * 1024 * 1024; // holds the full audio set plus a map working set
 const READAHEAD = 8; // chunks pulled per miss
 
 export interface ArchiveEntry {
@@ -116,6 +116,8 @@ export class ArchiveStreamer {
     // Read ahead only while the file is being read sequentially. Doing it blindly pulled 8x the
     // bytes for scattered reads, and the transfer — not the request count — is the bottleneck.
     const sequential = this.nextIndex.get(url) === index;
+    // No reporting from here: this runs inside the engine's synchronous read, and touching the DOM
+    // per chunk stalled the boot.
     const span = this.fetchChunkSync(url, index, handle, sequential ? READAHEAD : 1);
     this.nextIndex.set(url, index + span.length / CHUNK_SIZE);
     for (let offset = 0; offset < span.length; offset += CHUNK_SIZE) {

@@ -44,7 +44,15 @@ export function render(root: HTMLElement): void {
 
     <main class="flex min-h-0 w-full flex-1 flex-col gap-2.5 px-2 py-2.5 sm:px-6">
       <section class="hud-cut flex min-h-[52px] flex-wrap items-center justify-between gap-2 px-3.5 py-2" style="--hud-cut-surface: var(--color-hud-surface)">
-        <span id="status" role="status" aria-live="polite" class="text-sm font-bold">Starting…</span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-baseline gap-3">
+            <span id="status" role="status" aria-live="polite" class="text-sm font-bold">Starting…</span>
+            <span id="status-detail" class="truncate text-xs text-hud-muted"></span>
+          </div>
+          <div id="progress-track" hidden class="mt-1 h-1 w-full bg-hud-raised">
+            <div id="progress-bar" class="h-full w-0 bg-hud-accent transition-[width] duration-150"></div>
+          </div>
+        </div>
         <div class="flex items-center gap-3">
           <span id="cap-wasm" class="border-l-[3px] border-hud-border bg-hud-raised px-2 py-1 text-xs text-hud-muted">WASM</span>
           <span id="cap-webgpu" class="border-l-[3px] border-hud-border bg-hud-raised px-2 py-1 text-xs text-hud-muted">WebGPU</span>

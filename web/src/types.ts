@@ -44,6 +44,7 @@ export interface EmscriptenModule {
   _GeneralsXMouseX?: () => number;
   _GeneralsXMouseY?: () => number;
   _GeneralsXSetAudioMuted?: (muted: number) => number;
+  _GeneralsXLanSetIdentity?: (client: number) => number;
 }
 
 export type ModuleFactory = (config: Record<string, unknown>) => Promise<EmscriptenModule>;

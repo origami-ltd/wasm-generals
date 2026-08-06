@@ -289,6 +289,16 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
   module = this;
   (globalThis as unknown as { __gx: EmscriptenModule }).__gx = this;
   frame.dataset.ready = "true";
+  // Every client needs its own LAN name: the lobby hides games hosted by a player with the same
+  // name, so two tabs called "emscripten" can never see each other. sessionStorage is per tab, so
+  // two tabs on one machine get different ids and can play each other.
+  const stored = sessionStorage.getItem("generalsX.lanClient");
+  const lanClient = Number(query.get("lanClient") ?? stored ?? 0)
+    || Math.floor(Math.random() * 254) + 1;
+  sessionStorage.setItem("generalsX.lanClient", String(lanClient));
+  const nameLan = setInterval(() => {
+    if (module?._GeneralsXLanSetIdentity?.(lanClient)) clearInterval(nameLan);
+  }, 500);
   // Guests need crossOriginIsolated (SharedArrayBuffer) to stream, so only offer the link where it works.
   el("share").hidden = false;
   setStatus("Running");

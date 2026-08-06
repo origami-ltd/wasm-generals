@@ -261,7 +261,6 @@ function warmAudio(entries: { name: string; size: number }[]): void {
       report("", `Caching audio · ${name} · ${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`,
         done / total))
     .then(() => {
-      report("Running", "");
       log("Audio archives cached locally.");
     });
 }
@@ -365,7 +364,14 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
   const lanClient = Number(query.get("lanClient") ?? stored ?? 0) || nextLanClient();
   sessionStorage.setItem("generalsX.lanClient", String(lanClient));
   el("share").hidden = false;
-  report("Running", "");
+  report("Starting engine", "loading game data");
+  // "Running" is a lie until the engine has actually drawn something; watch its frame counter.
+  const watchFirstFrame = setInterval(() => {
+    if ((module?._GeneralsXLogicFrame?.() ?? 0) > 0) {
+      clearInterval(watchFirstFrame);
+      report("Running", "");
+    }
+  }, 250);
   const label = LAN_NAMES[lanClient] ?? `Player${lanClient}`;
   const nameLan = setInterval(() => {
     if (module?.ccall?.("GeneralsXLanSetName", "number", ["string"], [label])) clearInterval(nameLan);

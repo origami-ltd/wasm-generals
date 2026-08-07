@@ -4,8 +4,52 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
-    <title>GeneralsX · Browser runtime</title>
-    <link rel="icon" href="data:,">
+    <title>Command &amp; Conquer: Generals Zero Hour in your browser — GeneralsX Web</title>
+    <meta name="description" content="Play Command & Conquer: Generals Zero Hour in your browser. The full game compiled to WebAssembly with WebGPU rendering and LAN multiplayer — streaming from your own installed copy. Part of the wasm.com.br game preservation initiative.">
+    <link rel="canonical" href="https://generals.wasm.com.br/">
+    <meta name="theme-color" content="#020b12">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="wasm.com.br">
+    <meta property="og:title" content="Command & Conquer: Generals Zero Hour in your browser">
+    <meta property="og:description" content="The full game compiled to WebAssembly + WebGPU, with LAN multiplayer. Bring your own installed copy — nothing is downloaded or redistributed.">
+    <meta property="og:url" content="https://generals.wasm.com.br/">
+    <meta property="og:image" content="https://generals.wasm.com.br/og-generals.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Command & Conquer: Generals Zero Hour in your browser">
+    <meta name="twitter:description" content="Full game, WebAssembly + WebGPU, LAN multiplayer. Your own copy, streamed — nothing redistributed.">
+    <meta name="twitter:image" content="https://generals.wasm.com.br/og-generals.png">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23020b12'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='18' font-weight='bold' fill='%2300d9ff' text-anchor='middle'%3EGX%3C/text%3E%3C/svg%3E">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "VideoGame",
+      "name": "Command & Conquer: Generals Zero Hour — GeneralsX Web",
+      "url": "https://generals.wasm.com.br/",
+      "image": "https://generals.wasm.com.br/og-generals.png",
+      "description": "The full Command & Conquer: Generals Zero Hour compiled to WebAssembly, rendering through WebGPU, with browser-to-browser LAN multiplayer. Players stream assets from their own installed copy; no game data is distributed.",
+      "playMode": ["SinglePlayer", "MultiPlayer"],
+      "applicationCategory": "Game",
+      "operatingSystem": "Web browser (WebGPU: Chrome, Edge)",
+      "gamePlatform": "Web browser",
+      "genre": "Real-time strategy",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "isBasedOn": "https://github.com/fbraz3/GeneralsX",
+      "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+      "author": { "@type": "Person", "name": "Erasmo Bellumat", "url": "https://github.com/ebellumat" },
+      "publisher": { "@type": "Organization", "name": "Origami LTD", "url": "https://origami.ltd" },
+      "isPartOf": { "@type": "WebSite", "name": "wasm.com.br", "url": "https://wasm.com.br" }
+    }
+    </script>
+    <!-- Google Analytics: one property for wasm.com.br and every game subdomain -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7PS7XPQE5G"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-7PS7XPQE5G');
+    </script>
     <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
             data-id="ebellumat" data-description="Support wasm.com.br" data-message=""
             data-color="#0ea5b7" data-position="Right" data-x_margin="18" data-y_margin="18" defer></script>

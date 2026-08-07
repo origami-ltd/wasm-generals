@@ -481,8 +481,9 @@ function preloadEverything(entries: { name: string; size: number }[]): Promise<v
 }
 let module: EmscriptenModule | undefined;
 
-el("cap-wasm").textContent = typeof WebAssembly === "object" ? "WASM ready" : "WASM missing";
-el("cap-webgpu").textContent = "gpu" in navigator ? "WebGPU ready" : "WebGPU missing";
+// The capability chips only appear when something is actually wrong.
+el("cap-wasm").hidden = typeof WebAssembly === "object";
+el("cap-webgpu").hidden = "gpu" in navigator;
 
 const config: Record<string, unknown> = {
   canvas,

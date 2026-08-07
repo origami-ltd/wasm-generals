@@ -21,29 +21,14 @@ export function render(root: HTMLElement): void {
         <h1 class="m-0 text-[clamp(18px,2.4vw,26px)] uppercase tracking-[0.14em] text-hud-accent [text-shadow:0_0_12px_hsl(188_100%_50%/.55)]">GeneralsX</h1>
         <p class="m-0 hidden text-sm text-hud-muted sm:block">WebAssembly + WebGPU</p>
       </div>
-      <div class="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-                <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
-          <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden lg:inline">Display</span>
-            <select id="aspect" class="hud-select"><option value="16:9">16:9</option><option value="4:3">4:3</option></select>
-          </label>
-          <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden lg:inline">Boot</span>
-            <select id="boot" class="hud-select">
-              <option value="fast">Fast start</option>
-              <option value="full">Full start</option>
-            </select>
-          </label>
-        </div>
-        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
-          <button id="share" hidden class="hud-button whitespace-nowrap" title="Copy the link for players on your network">Multiplayer</button>
-          <button id="sound" class="hud-button whitespace-nowrap">Sound on</button>
-          <button id="fullscreen" class="hud-button whitespace-nowrap">Fullscreen</button>
-          <button id="reset" class="hud-button whitespace-nowrap" title="Clear saved settings and ownership, then reload">Reset</button>
-          <a href="https://github.com/origami-ltd/wasm-generals" target="_blank" rel="noopener"
-             aria-label="Source on GitHub" title="Source on GitHub"
-             class="hud-button grid place-items-center px-2 text-hud-accent [filter:drop-shadow(0_0_6px_hsl(188_100%_50%/.75))] transition-[filter] hover:[filter:drop-shadow(0_0_10px_hsl(188_100%_50%))]">
-            <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-          </a>
-        </div>
+      <div class="flex items-center gap-2">
+        <a href="https://buymeacoffee.com/ebellumat" target="_blank" rel="noopener"
+           class="hud-button inline-flex items-center gap-1.5 whitespace-nowrap">☕ Buy me a coffee</a>
+        <a href="https://github.com/origami-ltd/wasm-generals" target="_blank" rel="noopener"
+           aria-label="Source on GitHub" title="Source on GitHub"
+           class="hud-button grid place-items-center px-2 text-hud-accent [filter:drop-shadow(0_0_6px_hsl(188_100%_50%/.75))] transition-[filter] hover:[filter:drop-shadow(0_0_10px_hsl(188_100%_50%))]">
+          <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        </a>
       </div>
     </header>
 
@@ -58,9 +43,22 @@ export function render(root: HTMLElement): void {
             <div id="progress-bar" class="h-full w-0 bg-hud-accent transition-[width] duration-150"></div>
           </div>
         </div>
-        <div class="flex items-center gap-3">
-          <span id="cap-wasm" class="border-l-[3px] border-hud-border bg-hud-raised px-2 py-1 text-xs text-hud-muted">WASM</span>
-          <span id="cap-webgpu" class="border-l-[3px] border-hud-border bg-hud-raised px-2 py-1 text-xs text-hud-muted">WebGPU</span>
+        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
+          <span id="cap-wasm" hidden class="border-l-[3px] border-hud-warm bg-hud-raised px-2 py-1 text-xs text-hud-warm">WASM missing</span>
+          <span id="cap-webgpu" hidden class="border-l-[3px] border-hud-warm bg-hud-raised px-2 py-1 text-xs text-hud-warm">WebGPU missing</span>
+          <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden lg:inline">Display</span>
+            <select id="aspect" class="hud-select"><option value="16:9">16:9</option><option value="4:3">4:3</option></select>
+          </label>
+          <label class="flex items-center gap-2 text-sm text-hud-muted"><span class="hidden lg:inline">Boot</span>
+            <select id="boot" class="hud-select">
+              <option value="fast">Fast start</option>
+              <option value="full">Full start</option>
+            </select>
+          </label>
+          <button id="share" hidden class="hud-button whitespace-nowrap" title="Copy the link for players on your network">Multiplayer</button>
+          <button id="sound" class="hud-button whitespace-nowrap">Sound on</button>
+          <button id="fullscreen" class="hud-button whitespace-nowrap">Fullscreen</button>
+          <button id="reset" class="hud-button whitespace-nowrap" title="Clear saved settings and ownership, then reload">Reset</button>
         </div>
       </section>
 

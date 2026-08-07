@@ -8,6 +8,20 @@
 **Play it: [generals.wasm.com.br](https://generals.wasm.com.br)** — bring your own installed copy of the game.
 The release *is* the site; there is nothing to download.
 
+![Skirmish running in the browser](docs/media/04-skirmish.png)
+
+## See it run
+
+The whole game inside a browser tab: WebGPU rendering, streaming assets, the original UI.
+
+![Gameplay in the browser](docs/media/gameplay.gif)
+
+| Ready to play | Main menu |
+| --- | --- |
+| ![The page with the Play button](docs/media/01-ready.png) | ![Main menu on the shellmap](docs/media/02-main-menu.jpg) |
+
+A higher-quality clip: [docs/media/gameplay.mp4](docs/media/gameplay.mp4)
+
 ## The wasm.com.br initiative
 
 **wasm.com.br** is a preservation and portability initiative for games that have already been

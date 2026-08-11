@@ -35,7 +35,7 @@ export function render(root: HTMLElement): void {
     </header>
 
     <main class="flex min-h-0 w-full flex-1 flex-col gap-2.5 px-2 py-2.5 sm:px-6">
-      <section class="ogx-panel flex min-h-[52px] flex-wrap items-center justify-between gap-2 px-3.5 py-2" style="--ogx-panel-surface: var(--surface)">
+      <section class="ogx-panel flex min-h-[52px] flex-wrap items-center justify-between gap-x-4 gap-y-2 px-3 py-2 sm:px-3.5" style="--ogx-panel-surface: var(--surface)">
         <div class="min-w-0 flex-1">
           <div class="flex items-baseline gap-3">
             <span id="status" role="status" aria-live="polite" class="text-sm font-bold">Starting…</span>
@@ -45,9 +45,7 @@ export function render(root: HTMLElement): void {
             <div id="progress-bar" class="h-full w-0 bg-accent transition-[width] duration-150"></div>
           </div>
         </div>
-        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2">
-          <span id="cap-wasm" hidden class="border-l-[3px] border-signal bg-raised px-2 py-1 text-xs text-signal">WASM missing</span>
-          <span id="cap-webgpu" hidden class="border-l-[3px] border-signal bg-raised px-2 py-1 text-xs text-signal">WebGPU missing</span>
+        <div class="flex w-full min-w-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
           <label class="flex items-center gap-2 text-sm text-muted"><span class="hidden lg:inline">Display</span>
             <select id="aspect" class="ogx-hud-select"><option value="16:9">16:9</option><option value="4:3">4:3</option></select>
           </label>
@@ -102,24 +100,6 @@ export function render(root: HTMLElement): void {
           </div>
           <img id="cursor-overlay" alt="" hidden class="pointer-events-none fixed left-0 top-0 z-[5] [image-rendering:pixelated]">
 
-          <div id="firstrun" hidden class="absolute inset-0 z-[6] grid place-items-center bg-bg/94 p-4">
-            <div class="ogx-panel max-h-full max-w-4xl overflow-auto p-4 text-left sm:p-7" style="--ogx-panel-surface: var(--raised)">
-              <h2 class="ogx-glow m-0 mb-2 uppercase tracking-[0.12em] text-accent">Load your game files</h2>
-              <p class="mb-5 text-[13px] text-muted">GeneralsX runs your own copy of
-                 <strong>Command &amp; Conquer Generals — Zero Hour</strong>. Nothing is downloaded:</p>
-              <div class="border border-line bg-surface p-4">
-                <h3 class="m-0 mb-2 flex items-center gap-2 text-sm uppercase tracking-[0.08em] text-accent">
-                  Select your game folder
-                  <button id="firstrun-info" aria-label="Where to find the game folder"
-                          class="ogx-hud-button h-5 min-h-5 w-5 rounded-full px-0 text-xs [clip-path:none]">i</button>
-                </h3>
-                <p class="text-[13px] text-muted">Point the browser at your installed copy. The files stay on your machine.</p>
-                <button id="firstrun-folder" class="ogx-hud-button mt-2">Select game folder</button>
-                <p id="firstrun-folder-note" class="min-h-4 text-xs text-signal"></p>
-              </div>
-              <div id="firstrun-info-panel" hidden class="mt-4 space-y-2 border-l-[3px] border-accent bg-surface p-3.5 text-xs text-muted">${STEAM_HELP}</div>
-            </div>
-          </div>
         </section>
       </div>
 
@@ -128,7 +108,9 @@ export function render(root: HTMLElement): void {
         <textarea id="output" readonly aria-label="Runtime log"
                   class="mt-2 h-48 w-full resize-none bg-black p-2 text-xs text-muted"></textarea>
       </details>
-    </main>`;
+    </main>
+
+    <div id="firstrun"></div>`;
 }
 
 export const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;

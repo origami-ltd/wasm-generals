@@ -1,8 +1,9 @@
 import "./style.css";
 import { initConsole } from "./console";
-import { ArchiveStreamer } from "@wasm/runtime";
+import { ArchiveStreamer, allSupported, checkCapabilities, isHandheld } from "@wasm/runtime";
+import { mountGate } from "@origami-ltd/ui/gate";
 import { findArchiveDirs, folders, hasSavedFolders, loadManifest, localArchives } from "./archives";
-import { el, render } from "./ui";
+import { el, render, STEAM_HELP } from "./ui";
 import type { EmscriptenModule, ModuleFactory } from "./types";
 
 render(el("app"));
@@ -136,6 +137,31 @@ el("reset").addEventListener("click", () => {
 });
 
 /* ------------------------------------------------------------ first-run gate */
+const capabilities = checkCapabilities("webgpu");
+
+const gate = mountGate(el("firstrun"), {
+  game: "Command & Conquer: Generals — Zero Hour",
+  help: STEAM_HELP,
+  capabilities,
+  handheld: isHandheld(),
+  pickerId: "generalsx-install",
+  onPick: async (picked) => {
+    const found = await findArchiveDirs(picked);
+    if (!found.has("GeneralsZH")) {
+      return "No Zero Hour archives (*ZH.big) under that folder — pick the install folder.";
+    }
+    await folders.save(found);
+    // Drop ?assets=1: reloading with it would just reopen this panel forever.
+    setTimeout(() => location.replace(location.pathname), 700);
+    return `Found ${[...found.keys()].join(" + ")}. Starting…`;
+  },
+});
+
+if (gate.blocked) {
+  gate.show();
+  report("Unsupported browser", "see what this page needs");
+}
+
 // Share the running host with players on the same network: they stream the archives from here.
 el("share").addEventListener("click", async () => {
   const button = el("share");
@@ -150,40 +176,9 @@ el("share").addEventListener("click", async () => {
   setTimeout(() => { button.textContent = label; }, 1800);
 });
 
-el("firstrun-info").addEventListener("click", () => {
-  const panel = el("firstrun-info-panel");
-  panel.hidden = !panel.hidden;
-});
-el("firstrun-folder").addEventListener("click", async () => {
-  const note = el("firstrun-folder-note");
-  const picker = (window as unknown as {
-    showDirectoryPicker?: (o: object) => Promise<FileSystemDirectoryHandle>;
-  }).showDirectoryPicker;
-  if (!picker) {
-    note.textContent = "This browser cannot pick folders — use Chrome or Edge.";
-    return;
-  }
-  try {
-    const root = await picker({ id: "generalsx-install", mode: "read" });
-    note.textContent = "Scanning…";
-    const found = await findArchiveDirs(root);
-    if (!found.has("GeneralsZH")) {
-      note.textContent = "No Zero Hour archives (*ZH.big) under that folder — pick the install folder.";
-      return;
-    }
-    await folders.save(found);
-    note.textContent = `Found ${[...found.keys()].join(" + ")}. Starting…`;
-    // Drop ?assets=1: reloading with it would just reopen this panel forever.
-    setTimeout(() => location.replace(location.pathname), 700);
-  } catch (error) {
-    console.debug("folder selection cancelled", error);
-    note.textContent = "";
-  }
-});
-
 // ?assets=1 means the player came to repoint their install — open the picker immediately,
 // before any engine bootstrapping gets a chance to sit in front of it.
-if (query.get("assets") === "1") el("firstrun").hidden = false;
+if (query.get("assets") === "1") gate.show();
 
 /* ------------------------------------------------------------- letterboxing */
 // JS owns the fit: the engine controls the canvas backing size, which CSS max-% cannot contain.
@@ -284,10 +279,6 @@ initConsole({
 });
 
 /* ------------------------------------------------------------------- boot */
-if (!crossOriginIsolated) {
-  // SharedArrayBuffer is what makes streaming possible; without a secure context there is no game.
-  setStatus("Open this page over https:// — the browser blocks shared memory otherwise.");
-}
 // Names shown in the LAN lobby. Index 1 and 2 are the build's own, the rest are the general's
 // callouts everyone who played this game hears in their sleep.
 const LAN_NAMES = [
@@ -475,10 +466,6 @@ function preloadEverything(entries: { name: string; size: number }[]): Promise<v
 }
 let module: EmscriptenModule | undefined;
 
-// The capability chips only appear when something is actually wrong.
-el("cap-wasm").hidden = typeof WebAssembly === "object";
-el("cap-webgpu").hidden = "gpu" in navigator;
-
 const config: Record<string, unknown> = {
   canvas,
   arguments: runtimeArguments,
@@ -491,7 +478,7 @@ const config: Record<string, unknown> = {
       instance.addRunDependency("gx-assets");
       // ?assets=1 reopens the picker to point at a different install.
       if (query.get("assets") === "1") {
-        el("firstrun").hidden = false;
+        gate.show();
         return; // dependency stays: wait for a fresh choice
       }
       Promise.all([localArchives(), streamer.ready])
@@ -507,14 +494,14 @@ const config: Record<string, unknown> = {
           }
           if (await hasSavedFolders()) {
             // Handles exist but the browser wants a gesture to re-grant access on this load.
-            el("firstrun").hidden = false;
-            el("firstrun-folder-note").textContent = "Click to re-allow access to your game folder.";
+            gate.show();
+            gate.setNote("Click to re-allow access to your game folder.");
             return; // dependency stays: booting now would mean booting with no archives
           }
           const manifest = await loadManifest();
           report("Mounting archives", `${manifest.entries.length} files`);
           if (manifest.missing) {
-            el("firstrun").hidden = false;
+            gate.show();
             log("Game archives not found — waiting for the player to point at their install.");
             return; // dependency stays: no game files, no game
           }
@@ -526,7 +513,7 @@ const config: Record<string, unknown> = {
         .catch((error: Error) => {
           log(`Asset manifest failed: ${error.message}`);
           // Static hosting has no manifest server: ownership comes from the player's own folder.
-          el("firstrun").hidden = false;
+          gate.show();
         });
     },
     // The game is configured through Options.ini, so the user data dir must survive a reload.
@@ -600,6 +587,10 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
     }, 500);
   }
 };
+
+// A browser that cannot run the game must not pull a gigabyte to find that out — the gate is
+// already up saying which requirement is missing.
+if (!allSupported(capabilities)) throw new Error("unsupported browser");
 
 setStatus("Loading…");
 const factory = (await import(/* @vite-ignore */ "/GeneralsXZH.js")).default as ModuleFactory;

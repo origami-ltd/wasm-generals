@@ -1,6 +1,7 @@
 import "./style.css";
 import { initConsole } from "./console";
-import { ArchiveStreamer, findArchiveDirs, hasSavedFolders, loadManifest, localArchives } from "./streaming";
+import { ArchiveStreamer } from "@wasm/runtime";
+import { findArchiveDirs, folders, hasSavedFolders, loadManifest, localArchives } from "./archives";
 import { el, render } from "./ui";
 import type { EmscriptenModule, ModuleFactory } from "./types";
 
@@ -130,7 +131,7 @@ aspect.addEventListener("change", () => {
 
 el("reset").addEventListener("click", () => {
   localStorage.clear();
-  indexedDB.deleteDatabase("generalsx");
+  folders.clear();
   location.reload();
 });
 
@@ -170,14 +171,7 @@ el("firstrun-folder").addEventListener("click", async () => {
       note.textContent = "No Zero Hour archives (*ZH.big) under that folder — pick the install folder.";
       return;
     }
-    const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("generalsx", 1);
-      request.onupgradeneeded = () => request.result.createObjectStore("handles");
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    const store = database.transaction("handles", "readwrite").objectStore("handles");
-    for (const [key, handle] of found) store.put(handle, key);
+    await folders.save(found);
     note.textContent = `Found ${[...found.keys()].join(" + ")}. Starting…`;
     // Drop ?assets=1: reloading with it would just reopen this panel forever.
     setTimeout(() => location.replace(location.pathname), 700);
@@ -238,7 +232,7 @@ function drawLockedCursor(): void {
 
 document.addEventListener("pointerlockchange", () => {
   const locked = document.pointerLockElement === canvas;
-  canvas.classList.toggle("pointer-locked", locked);
+  canvas.classList.toggle("ogx-pointer-locked", locked);
   if (locked) drawLockedCursor();
   else cursorOverlay.hidden = true;
   // The browser consumes ESC as the pointer-lock exit, so the engine never sees the key. When the

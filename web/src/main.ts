@@ -499,7 +499,24 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
 if (!allSupported(shell.capabilities)) throw new Error("unsupported browser");
 
 setStatus("Loading…");
-const factory = (await import(/* @vite-ignore */ "/GeneralsXZH.js")).default as ModuleFactory;
+
+// The emscripten build is produced by CMake and served beside this page, so it has to stay
+// invisible to the bundler. A bare dynamic import is not: Vite resolves it at transform time and
+// the dev server 500s outright when the engine has not been built, which is the normal state of a
+// fresh checkout. rollupOptions.external only covers `build`, so it never helped here.
+// Going through Function() makes it a plain runtime fetch Vite cannot see — same as Vice City.
+const ENGINE_URL = "/GeneralsXZH.js";
+const importEngine = new Function("url", "return import(url)") as (url: string) => Promise<unknown>;
+const factory = await importEngine(ENGINE_URL)
+  .then((loaded) => (loaded as { default: ModuleFactory }).default)
+  .catch(() => undefined);
+
+if (!factory) {
+  report("Engine not built yet", "the GeneralsX WebAssembly build is not on this host");
+  log("No /GeneralsXZH.js on this host — build the emscripten target and serve it beside this page.");
+  gate.show();
+  throw new Error("engine not built");
+}
 
 // Chrome refuses to start an AudioContext without user activation, and the engine creates its
 // device during init — so the runtime only starts once the player has clicked Play.

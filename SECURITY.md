@@ -1,5 +1,37 @@
-# Security Policy
+# Security policy
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-If you have been informed of or discovered a security vulnerability, exploit or other flaw, please contact a developer of TheSuperHackers to report it privately. Public channels on Discord or the GitHub should be avoided, as the exploit may be taken from a public post and used before it can be patched. The best method is to contact xezon on discord. He can be reached in the [Community Outpost Discord](https://discord.gg/WzxQDZersE).
+**Do not open a public issue.** Use GitHub's private vulnerability reporting on the affected
+repository — the *Security* tab, *Report a vulnerability* — or write to
+**lbj.erasmo@gmail.com** with `SECURITY` in the subject.
+
+Tell me what you found, how to reproduce it, and what an attacker gets out of it. A proof of
+concept helps and is never required.
+
+You will get a reply within a week. These are side projects maintained by one person; that is the
+honest expectation to set rather than a service level nobody would meet.
+
+## What is in scope
+
+- The page at `https://generals.wasm.ltd` and its shell: the loader, the streaming layer, saves,
+  the install picker, and the browser-to-browser LAN transport.
+- The build and deploy configuration in these repositories.
+- Anything that lets a page read a visitor's files beyond the folder they picked, or exfiltrate
+  data from their machine. That is the failure mode that matters most here: these pages ask for
+  access to a game directory, and that trust is the whole product.
+
+## What is out of scope
+
+- Vulnerabilities in the engine itself. Those belong to GeneralsX
+  (https://github.com/fbraz3/GeneralsX) and to EA's source release; a 2003 engine compiled to
+  WebAssembly is full of memory bugs by construction. What is in scope is a bug that escapes the WebAssembly sandbox or the browser's
+  file access model — those, please report.
+- Missing hardening headers that do not lead to an exploit, automated scanner output without a
+  demonstrated impact, and reports about the game's own anti-cheat or piracy properties.
+- Anything requiring the user to install a modified build of the software.
+
+## Disclosure
+
+Report privately, give me a chance to fix it, then publish whatever you like. I will credit you
+unless you would rather I did not.

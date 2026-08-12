@@ -71,7 +71,7 @@ What this covers
 ----------------
 
 This licence covers the web page only - everything under web/. The engine in this repository is
-GPL-3.0 (see LICENSE.md at the repository root) and is not licensed under these terms: a GPL
+GPL-3.0 (see LICENSE-ENGINE-GPL-3.0.md at the repository root) and is not licensed under these terms: a GPL
 upstream cannot be relicensed downstream, GPL-3.0 forbids adding conditions to it, and an
 attribution-in-credits term of this kind is incompatible with it besides. The proof-of-usage
 condition applies to this page and to nothing else here.

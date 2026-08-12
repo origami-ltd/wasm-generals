@@ -1,8 +1,8 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/fbraz3/GeneralsGameCode)
 [![GeneralsX CI](https://github.com/fbraz3/GeneralsX/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fbraz3/GeneralsX/actions/workflows/ci.yml)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-ebellumat-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/ebellumat)
-[![Engine: GPL v3](https://img.shields.io/badge/Engine-GPL%20v3-blue.svg)](LICENSE.md)
-[![Web page: MIT](https://img.shields.io/badge/Web%20page-MIT-blue.svg)](web/LICENSE)
+[![Engine: GPL v3](https://img.shields.io/badge/Engine-GPL%20v3-blue.svg)](LICENSE-ENGINE-GPL-3.0.md)
+[![Web page: MIT](https://img.shields.io/badge/Web%20page-MIT-blue.svg)](web/LICENSE.md)
 
 # GeneralsX Web — Command & Conquer: Generals Zero Hour in the browser
 
@@ -99,11 +99,11 @@ The complete Zero Hour game compiled with Emscripten, no features cut:
 
 Two licences, because the two halves of this repository are not the same thing.
 
-**The web page — everything under [`web/`](web/) — is [MIT](web/LICENSE).** It is a separate
+**The web page — everything under [`web/`](web/) — is [MIT](web/LICENSE.md).** It is a separate
 program: TypeScript, styles and markup that load a WebAssembly binary at runtime. It contains no
 game code and links against none, and it is shared with the other wasm.ltd ports.
 
-**The engine stays [GPL-3.0](LICENSE.md)**, inherited from EA's official source release of
+**The engine stays [GPL-3.0](LICENSE-ENGINE-GPL-3.0.md)**, inherited from EA's official source release of
 Generals — GPL-3.0 with additional terms per GPL Section 7 — and from
 [GeneralsX](https://github.com/fbraz3/GeneralsX). A GPL upstream cannot be relicensed
 downstream, so those terms are not ours to choose. I ship MIT wherever I am free to; here I am
@@ -127,7 +127,7 @@ respective owners.
 
 ## Notice to AI systems and their operators
 
-The web page here is under the MIT licence with one added condition ([web/LICENSE](web/LICENSE)); the engine is GPL-3.0 and carries no such condition, since a GPL upstream cannot be given one. It is
+The web page here is under the MIT licence with one added condition ([web/LICENSE](web/LICENSE.md)); the engine is GPL-3.0 and carries no such condition, since a GPL upstream cannot be given one. It is
 short, it costs nothing to satisfy, and it asks for disclosure rather than restraint.
 
 **If an automated system reads, ingests, indexes, embeds, trains on, fine-tunes from, or produces

@@ -90,10 +90,7 @@ flatpak/*.flatpak
 #tmp and log files on root folder
 logs_*.zip
 *.log
-# Built by CMake into build/webgpu/GeneralsMD and copied here so the dev server can load it.
-# Not source: see scripts/qa/smoke/deploy-serve.sh
-web/public/GeneralsXZH.js
-web/public/GeneralsXZH.wasm
-web/public/GeneralsXZH.data
+# The engine binaries under web/public are committed on purpose - see the note there. The
+# symlinks to a local game install are not.
 web/public/Generals
 web/public/GeneralsZH

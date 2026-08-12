@@ -9,6 +9,16 @@ import type { EmscriptenModule, ModuleFactory } from "./types";
 const USER_DATA_PATH = "/home/web_user/.local/share/GeneralsX/GeneralsZH";
 const DEFAULT_OPTIONS = "Resolution = 1280 720\n";
 
+/**
+ * The engine, paused on its asset dependency because no archives were found yet.
+ *
+ * Held so a pick can mount into the running module. Reloading instead looks obvious, and was what
+ * this did - but a File System Access handle comes back from IndexedDB needing its permission
+ * re-granted, and a fresh page load has no user gesture to grant it with, so the reload dropped
+ * the folder that had just been chosen and reopened the gate. Picking again reloaded again.
+ */
+let waiting: EmscriptenModule | undefined;
+
 let menuPending = false;
 let menuUp = false;
 let loadActiveAt = 0; // last GENERALSX_LOAD_PROGRESS: the engine is inside a load right now
@@ -64,7 +74,27 @@ const shell = createShell({
       return "No Zero Hour archives (*ZH.big) under that folder — pick the install folder.";
     }
     await folders.save(found);
-    // Drop ?assets=1: reloading with it would just reopen this panel forever.
+
+    // Feed the waiting engine directly; the permission this pick just granted is live now and
+    // will not survive a page load.
+    if (waiting) {
+      const instance = waiting;
+      waiting = undefined;
+      const local = await localArchives();
+      if (local.length) {
+        await streamer.ready;
+        for (const entry of local) streamer.mount(instance, entry);
+        lastManifest = local;
+        preloadEverything(local);
+        log(`Streaming ${local.length} archives from your selected folders.`);
+        instance.removeRunDependency("gx-assets");
+        gate.hide();
+        return undefined;
+      }
+    }
+
+    // No engine yet - the player came in through ?assets=1 before pressing Play. Drop the flag:
+    // reloading with it would just reopen this panel forever.
     setTimeout(() => location.replace(location.pathname), 700);
     return `Found ${[...found.keys()].join(" + ")}. Starting…`;
   },
@@ -379,6 +409,7 @@ const config: Record<string, unknown> = {
     // Archives stream on demand; without them the first-run panel explains how to point at the game.
     (instance: EmscriptenModule) => {
       instance.addRunDependency("gx-assets");
+      waiting = instance;
       // ?assets=1 reopens the picker to point at a different install.
       if (query.pickInstall) {
         gate.show();

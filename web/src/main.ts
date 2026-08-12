@@ -9,6 +9,9 @@ import type { EmscriptenModule, ModuleFactory } from "./types";
 const USER_DATA_PATH = "/home/web_user/.local/share/GeneralsX/GeneralsZH";
 const DEFAULT_OPTIONS = "Resolution = 1280 720\n";
 
+/** The saved archives, re-granted on the Play click — see that handler for why it happens there. */
+let resumed: Promise<Awaited<ReturnType<typeof localArchives>>> = Promise.resolve([]);
+
 let menuPending = false;
 let menuUp = false;
 let loadActiveAt = 0; // last GENERALSX_LOAD_PROGRESS: the engine is inside a load right now
@@ -396,7 +399,7 @@ const config: Record<string, unknown> = {
         gate.show();
         return; // dependency stays: wait for a fresh choice
       }
-      Promise.all([localArchives(), streamer.ready])
+      Promise.all([resumed, streamer.ready])
         .then(async ([local]) => {
           // A picked install wins: read straight from the player's disk, server not involved.
           if (local.length) {
@@ -565,6 +568,10 @@ report("Ready", "Runtime downloaded, let's Skirmish");
 play.addEventListener("click", () => {
   play.hidden = true;
   report("Starting engine", "loading game data");
+  // Re-grant the saved folders here, first thing, while this click still counts as a user
+  // gesture — requestPermission is refused without one, and asking during page load could only
+  // fail, which is what made a returning player re-pick every visit.
+  resumed = localArchives({ request: true }).catch(() => []);
   void factory(config);
   // The click is the user activation Chrome demands; sticky activation keeps later resumes legal.
   // Resume forever — Full Start creates its audio device long after the old 30-second settle

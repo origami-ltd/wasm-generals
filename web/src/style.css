@@ -1,5 +1,5 @@
 @import "tailwindcss";
-/* Tokens, components and the Tailwind theme bridge, shared with wasm.com.br and the other ports.
+/* Tokens, components and the Tailwind theme bridge, shared with wasm.ltd and the other ports.
    The Jarvis HUD palette is data-brand="generals" (set on <html>) — see packages/ui. */
 @import "@origami-ltd/ui/theme.css";
 

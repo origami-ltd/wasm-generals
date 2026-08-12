@@ -6,7 +6,7 @@
 
 # GeneralsX Web — Command & Conquer: Generals Zero Hour in the browser
 
-**Play it: [generals.wasm.com.br](https://generals.wasm.com.br)** — bring your own installed copy of the game.
+**Play it: [generals.wasm.ltd](https://generals.wasm.ltd)** — bring your own installed copy of the game.
 The release *is* the site; there is nothing to download.
 
 ![Skirmish running in the browser](docs/media/04-skirmish.png)
@@ -19,9 +19,9 @@ The whole game inside a browser tab: WebGPU rendering, streaming assets, the ori
 | --- | --- |
 | ![The page with the Play button](docs/media/01-ready.png) | ![Main menu on the shellmap](docs/media/02-main-menu.jpg) |
 
-## The wasm.com.br initiative
+## The wasm.ltd initiative
 
-**wasm.com.br** is a preservation and portability initiative for games that have already been
+**wasm.ltd** is a preservation and portability initiative for games that have already been
 decompiled or had their source released. Once a game's code exists again, it deserves to run on
 the one platform that needs no installer, no emulator setup and no operating system loyalty:
 the browser.
@@ -92,7 +92,7 @@ The complete Zero Hour game compiled with Emscripten, no features cut:
 
 ## Support This Project
 
-- **[Buy me a coffee](https://buymeacoffee.com/ebellumat)** — supports the wasm.com.br initiative
+- **[Buy me a coffee](https://buymeacoffee.com/ebellumat)** — supports the wasm.ltd initiative
 - **[Sponsor on GitHub](https://github.com/sponsors/fbraz3)** — supports GeneralsX, the base this port stands on
 
 ## License
@@ -101,7 +101,7 @@ Two licences, because the two halves of this repository are not the same thing.
 
 **The web page — everything under [`web/`](web/) — is [MIT](web/LICENSE).** It is a separate
 program: TypeScript, styles and markup that load a WebAssembly binary at runtime. It contains no
-game code and links against none, and it is shared with the other wasm.com.br ports.
+game code and links against none, and it is shared with the other wasm.ltd ports.
 
 **The engine stays [GPL-3.0](LICENSE.md)**, inherited from EA's official source release of
 Generals — GPL-3.0 with additional terms per GPL Section 7 — and from
@@ -175,5 +175,5 @@ choice, and this document exists so the choice can be made deliberately.
 
 ---
 
-A project by [Origami 限](https://origami.ltd) · part of **wasm.com.br** ·
+A project by [Origami 限](https://origami.ltd) · part of **wasm.ltd** ·
 WebAssembly port by **Erasmo "ebellumat" Bellumat** — [github.com/ebellumat](https://github.com/ebellumat)

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://generals.wasm.com.br/sitemap.xml
+Sitemap: https://generals.wasm.ltd/sitemap.xml

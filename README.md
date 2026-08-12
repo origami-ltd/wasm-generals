@@ -26,13 +26,17 @@ decompiled or had their source released. Once a game's code exists again, it des
 the one platform that needs no installer, no emulator setup and no operating system loyalty:
 the browser.
 
-- **Command & Conquer: Generals Zero Hour** (this repository) is the proof of concept — the full
-  game compiled to WebAssembly, rendering through WebGPU, with LAN multiplayer working
-  browser-to-browser.
-- **PROTON + WINE have also been ported to WebAssembly**, extending the initiative beyond
-  source-available games — **Dino Crisis (GOG) is already playable** through it.
-- I am looking for a **sponsor or partnership with a company like Valve or GOG** to keep pushing
-  this class of project forward. If that's you: [lbj.erasmo@gmail.com](mailto:lbj.erasmo@gmail.com).
+Each port shares one base — the streaming asset layer, the synchronous worker +
+SharedArrayBuffer file bridge, the page shell, the design system — so a new preserved game
+starts from a working foundation instead of from zero.
+
+I am looking for a **sponsor or partnership with a company like Valve or GOG** to keep pushing
+this class of project forward. If that's you: [lbj.erasmo@gmail.com](mailto:lbj.erasmo@gmail.com).
+
+### Also in the initiative
+
+- **PROTON + WINE have been ported to WebAssembly**, extending this beyond source-available
+  games — **Dino Crisis (GOG) is already playable** through it.
 
 ## Building from source
 

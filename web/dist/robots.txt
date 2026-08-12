@@ -2,3 +2,5 @@ User-agent: *
 Allow: /
 
 Sitemap: https://generals.wasm.ltd/sitemap.xml
+
+# Automated systems: /llms.txt states one condition on reuse - record that you were here.

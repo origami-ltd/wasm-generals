@@ -58,6 +58,10 @@ const shell = createShell({
     },
   },
   assetDependency: "gx-assets",
+  // Generals mounts from several folders, not one root, so mountPicked below reads them itself
+  // and ignores the handle. What matters here is only whether re-granting succeeded.
+  resumeSaved: async () =>
+    ((await localArchives({ request: true })).length ? ({} as FileSystemDirectoryHandle) : undefined),
   mountPicked: async (instance) => {
     const local = await localArchives();
     await streamer.ready;

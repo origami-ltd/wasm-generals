@@ -47,9 +47,9 @@ export async function findArchiveDirs(
 }
 
 /** Archives from the folders the player picked, read locally with no server involvement. */
-export async function localArchives(): Promise<ArchiveEntry[]> {
+export async function localArchives(options: { request?: boolean } = {}): Promise<ArchiveEntry[]> {
   try {
-    const picked = await folders.load(MOUNTS);
+    const picked = await folders.load(MOUNTS, options);
     const entries: ArchiveEntry[] = [];
     for (const mount of MOUNTS) {
       const directory = picked.get(mount);

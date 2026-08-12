@@ -1,7 +1,8 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/fbraz3/GeneralsGameCode)
 [![GeneralsX CI](https://github.com/fbraz3/GeneralsX/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/fbraz3/GeneralsX/actions/workflows/ci.yml)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-ebellumat-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/ebellumat)
-[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](LICENSE.md)
+[![Engine: GPL v3](https://img.shields.io/badge/Engine-GPL%20v3-blue.svg)](LICENSE.md)
+[![Web page: MIT](https://img.shields.io/badge/Web%20page-MIT-blue.svg)](web/LICENSE)
 
 # GeneralsX Web — Command & Conquer: Generals Zero Hour in the browser
 
@@ -92,9 +93,19 @@ The complete Zero Hour game compiled with Emscripten, no features cut:
 
 ## License
 
-**GPL-3.0**, inherited from the [GeneralsX](https://github.com/fbraz3/GeneralsX) base and EA's
-official source release of Generals ([LICENSE.md](LICENSE.md)). Author's note: I would rather
-ship this MIT, but I can't override such an archaic license.
+Two licences, because the two halves of this repository are not the same thing.
+
+**The web page — everything under [`web/`](web/) — is [MIT](web/LICENSE).** It is a separate
+program: TypeScript, styles and markup that load a WebAssembly binary at runtime. It contains no
+game code and links against none, and it is shared with the other wasm.com.br ports.
+
+**The engine stays [GPL-3.0](LICENSE.md)**, inherited from EA's official source release of
+Generals — GPL-3.0 with additional terms per GPL Section 7 — and from
+[GeneralsX](https://github.com/fbraz3/GeneralsX). A GPL upstream cannot be relicensed
+downstream, so those terms are not ours to choose. I ship MIT wherever I am free to; here I am
+free to for the page and not for the engine.
+
+No game assets are included or distributed by either part.
 
 EA has not endorsed and does not support this product. All trademarks are the property of their
 respective owners.

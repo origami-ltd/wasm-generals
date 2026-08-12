@@ -41,6 +41,7 @@ const shell = createShell({
   subtitle: "WebAssembly + WebGPU",
   game: "Command & Conquer: Generals — Zero Hour",
   gpu: "webgpu",
+  heapBytes: 2 * 1024 ** 3, // -sINITIAL_MEMORY=2147483648 in cmake/webgpu.cmake
   help: STEAM_HELP,
   logEndpoint: "/GeneralsXLog",
   links: githubLink("origami-ltd/wasm-generals"),

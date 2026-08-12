@@ -1,12 +1,10 @@
 import "./style.css";
 import { initConsole } from "./console";
 import { ArchiveStreamer, allSupported } from "@wasm/runtime";
-import { createShell, el, githubLink } from "@wasm/shell";
+import { createShell, el, query } from "@wasm/shell";
 import { findArchiveDirs, folders, hasSavedFolders, loadManifest, localArchives } from "./archives";
 import { STEAM_HELP } from "./ui";
 import type { EmscriptenModule, ModuleFactory } from "./types";
-
-const query = new URLSearchParams(location.search);
 
 const USER_DATA_PATH = "/home/web_user/.local/share/GeneralsX/GeneralsZH";
 const DEFAULT_OPTIONS = "Resolution = 1280 720\n";
@@ -44,7 +42,7 @@ const shell = createShell({
   heapBytes: 2 * 1024 ** 3, // -sINITIAL_MEMORY=2147483648 in cmake/webgpu.cmake
   help: STEAM_HELP,
   logEndpoint: "/GeneralsXLog",
-  links: githubLink("origami-ltd/wasm-generals"),
+  repo: "origami-ltd/wasm-generals",
   onLine: trackBoot,
   frame: () => module?._GeneralsXLogicFrame?.(),
   applyMute: (muted) => module?._GeneralsXSetAudioMuted?.(muted ? 1 : 0),
@@ -116,7 +114,7 @@ const fitCanvas = shell.fit;
 
 /* --------------------------------------------------------- boot / display */
 const bootMode = (query.get("boot") ?? localStorage.getItem("generalsX.bootMode")) === "full" ? "full" : "fast";
-const soundEnabled = query.get("sound") !== "0";
+const soundEnabled = !query.muted;
 
 const runtimeArguments: string[] = bootMode === "fast" ? ["-quickstart", "-noshellmap"] : [];
 if (!soundEnabled) runtimeArguments.push("-noaudio");
@@ -158,7 +156,7 @@ el("share").addEventListener("click", async () => {
 
 // ?assets=1 means the player came to repoint their install — open the picker immediately,
 // before any engine bootstrapping gets a chance to sit in front of it.
-if (query.get("assets") === "1") gate.show();
+if (query.pickInstall) gate.show();
 
 // No auto-pause: the simulation keeps running whether or not the page has focus — losing focus
 // must never stop a match (a hidden tab's frames are driven by the pump worker below).
@@ -382,7 +380,7 @@ const config: Record<string, unknown> = {
     (instance: EmscriptenModule) => {
       instance.addRunDependency("gx-assets");
       // ?assets=1 reopens the picker to point at a different install.
-      if (query.get("assets") === "1") {
+      if (query.pickInstall) {
         gate.show();
         return; // dependency stays: wait for a fresh choice
       }

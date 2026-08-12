@@ -1,6 +1,6 @@
 /** Backtick developer console, ported from the pre-Vite shell: ` toggles it, Esc closes it,
     Tab completes, arrows walk the history. Commands run against the live module exports. */
-import { el } from "./ui";
+import { el } from "@wasm/shell";
 import type { EmscriptenModule } from "./types";
 
 export interface ConsoleDeps {

@@ -1,28 +1,15 @@
 import "./style.css";
 import { initConsole } from "./console";
-import { ArchiveStreamer, allSupported, checkCapabilities, isHandheld } from "@wasm/runtime";
-import { mountGate } from "@origami-ltd/ui/gate";
+import { ArchiveStreamer, allSupported } from "@wasm/runtime";
+import { createShell, el, githubLink } from "@wasm/shell";
 import { findArchiveDirs, folders, hasSavedFolders, loadManifest, localArchives } from "./archives";
-import { el, render, STEAM_HELP } from "./ui";
+import { STEAM_HELP } from "./ui";
 import type { EmscriptenModule, ModuleFactory } from "./types";
 
-render(el("app"));
-
-const canvas = el<HTMLCanvasElement>("canvas");
-const frame = el("frame");
-const stage = el("stage");
-const output = el<HTMLTextAreaElement>("output");
-const status = el("status");
-const cursorOverlay = el<HTMLImageElement>("cursor-overlay");
 const query = new URLSearchParams(location.search);
 
 const USER_DATA_PATH = "/home/web_user/.local/share/GeneralsX/GeneralsZH";
 const DEFAULT_OPTIONS = "Resolution = 1280 720\n";
-
-/* ---------------------------------------------------------------- logging */
-const pendingLines: string[] = [];
-const shownLines: string[] = [];
-let shipChain: Promise<unknown> = Promise.resolve();
 
 let menuPending = false;
 let menuUp = false;
@@ -48,63 +35,87 @@ function trackBoot(line: string): void {
   }
 }
 
-function log(line: string): void {
-  trackBoot(line);
-  pendingLines.push(line);
-  shownLines.push(line);
-  if (shownLines.length > 512) shownLines.shift();
-  output.value = `${shownLines.join("\n")}\n`;
-  output.scrollTop = output.scrollHeight;
-}
+const shell = createShell({
+  key: "generalsX",
+  title: "GeneralsX",
+  subtitle: "WebAssembly + WebGPU",
+  game: "Command & Conquer: Generals — Zero Hour",
+  gpu: "webgpu",
+  help: STEAM_HELP,
+  logEndpoint: "/GeneralsXLog",
+  links: githubLink("origami-ltd/wasm-generals"),
+  onLine: trackBoot,
+  frame: () => module?._GeneralsXLogicFrame?.(),
+  applyMute: (muted) => module?._GeneralsXSetAudioMuted?.(muted ? 1 : 0),
+  pointer: {
+    // An RTS wants the pointer for the whole session, and the engine draws its own cursor, so
+    // the overlay mirrors where the engine thinks it is — under lock the OS one is hidden.
+    wantsCapture: () => true,
+    ready: () => el("frame").dataset.ready === "true",
+    cursor: () => {
+      const x = module?._GeneralsXMouseX?.() ?? -1;
+      const y = module?._GeneralsXMouseY?.() ?? -1;
+      return { x, y };
+    },
+  },
+  onReset: () => folders.clear(),
+  onPick: async (picked) => {
+    const found = await findArchiveDirs(picked);
+    if (!found.has("GeneralsZH")) {
+      return "No Zero Hour archives (*ZH.big) under that folder — pick the install folder.";
+    }
+    await folders.save(found);
+    // Drop ?assets=1: reloading with it would just reopen this panel forever.
+    setTimeout(() => location.replace(location.pathname), 700);
+    return `Found ${[...found.keys()].join(" + ")}. Starting…`;
+  },
+  controls: `
+    <label class="flex items-center gap-2 text-sm text-muted"><span class="hidden lg:inline">Boot</span>
+      <select id="boot" class="ogx-hud-select">
+        <option value="fast">Fast start</option>
+        <option value="full">Full start</option>
+      </select>
+    </label>
+    <button id="share" hidden class="ogx-hud-button whitespace-nowrap" title="Copy the link for players on your network">Multiplayer</button>`,
+  overlays: `
+    <!-- Guest pre-game sync: one ring, one number, one line. Shown before the game opens
+         while the menu minimum streams from the host. -->
+    <div id="holo" hidden class="absolute inset-0 z-[8] grid place-items-center bg-bg/97">
+      <div class="grid justify-items-center gap-4">
+        <div class="ogx-ring-wrap">
+          <svg class="ogx-ring" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="ogx-ring-track" cx="60" cy="60" r="54"></circle>
+            <circle id="holo-ring-fill" class="ogx-ring-fill" cx="60" cy="60" r="54"></circle>
+          </svg>
+          <div class="ogx-ring-center">
+            <div id="holo-percent" class="ogx-ring-percent">0%</div>
+            <div id="holo-mb" class="ogx-ring-note mt-1">contacting host…</div>
+          </div>
+        </div>
+        <div id="holo-file" class="ogx-ring-file">&nbsp;</div>
+      </div>
+    </div>
 
-// sendBeacon silently drops payloads over ~64KB, which loses exactly the early boot lines.
-let logDead = false;
-function shipLog(useBeacon = false): void {
-  if (!pendingLines.length) return;
-  if (logDead) { pendingLines.length = 0; return; }
-  const chunk = `${pendingLines.join("\n")}\n`;
-  pendingLines.length = 0;
-  if (useBeacon) {
-    navigator.sendBeacon("/GeneralsXLog", chunk);
-    return;
-  }
-  shipChain = shipChain.then(() => fetch("/GeneralsXLog", { method: "POST", body: chunk })
-    .catch(() => { logDead = true; })); // static hosting: stop retrying a sink that is not there
-}
-setInterval(() => shipLog(), 2000);
-addEventListener("pagehide", () => shipLog(true));
+    <!-- Backtick developer console -->
+    <div id="dev-console" hidden class="absolute inset-x-0 top-0 z-[9] flex max-h-[55%] flex-col border-b border-line bg-bg/92">
+      <pre id="dev-console-output" class="m-0 flex-1 overflow-auto whitespace-pre-wrap p-2 text-xs text-ink"></pre>
+      <form id="dev-console-form" class="flex items-center border-t border-line">
+        <span class="px-2 py-1 text-xs text-accent">&gt;</span>
+        <input id="dev-console-input" autocomplete="off" autocapitalize="off" spellcheck="false"
+               class="min-w-0 flex-1 bg-transparent py-1 pr-2 text-xs text-ink outline-none">
+      </form>
+    </div>`,
+});
 
-// Emscripten clears its own status when loading finishes, which would blank ours right after
-// onRuntimeInitialized set it — keep the last meaningful text instead.
-const detail = el("status-detail");
-const track = el("progress-track");
-const bar = el("progress-bar");
-
-/** Everything the page is doing lives here: headline, detail line, and a bar when there is a ratio. */
-function report(headline: string, note = "", ratio?: number): void {
-  if (headline) status.textContent = headline;
-  detail.textContent = note;
-  track.hidden = ratio === undefined;
-  if (ratio !== undefined) bar.style.width = `${Math.round(Math.min(1, Math.max(0, ratio)) * 100)}%`;
-}
-
-// Emscripten clears its own status when loading finishes, which would blank ours right after
-// onRuntimeInitialized set it — keep the last meaningful text instead.
-const setStatus = (text: string): void => {
-  const match = /\((\d+)\/(\d+)\)/.exec(text);
-  if (match) {
-    const done = Number(match[1]);
-    const total = Number(match[2]);
-    report("Loading runtime", `${(done / 2 ** 20).toFixed(0)}/${(total / 2 ** 20).toFixed(0)} MB`, done / total);
-    return;
-  }
-  if (text) report(text);
-};
+const { log, gate, sound } = shell;
+const { report, setStatus } = shell.status;
+const canvas = el<HTMLCanvasElement>("canvas");
+const statusLine = el("status");
+const fitCanvas = shell.fit;
 
 /* --------------------------------------------------------- boot / display */
 const bootMode = (query.get("boot") ?? localStorage.getItem("generalsX.bootMode")) === "full" ? "full" : "fast";
 const soundEnabled = query.get("sound") !== "0";
-let soundMuted = localStorage.getItem("generalsX.soundMuted") === "1";
 
 const runtimeArguments: string[] = bootMode === "fast" ? ["-quickstart", "-noshellmap"] : [];
 if (!soundEnabled) runtimeArguments.push("-noaudio");
@@ -130,38 +141,6 @@ aspect.addEventListener("change", () => {
   location.reload();
 });
 
-el("reset").addEventListener("click", () => {
-  localStorage.clear();
-  folders.clear();
-  location.reload();
-});
-
-/* ------------------------------------------------------------ first-run gate */
-const capabilities = checkCapabilities("webgpu");
-
-const gate = mountGate(el("firstrun"), {
-  game: "Command & Conquer: Generals — Zero Hour",
-  help: STEAM_HELP,
-  capabilities,
-  handheld: isHandheld(),
-  pickerId: "generalsx-install",
-  onPick: async (picked) => {
-    const found = await findArchiveDirs(picked);
-    if (!found.has("GeneralsZH")) {
-      return "No Zero Hour archives (*ZH.big) under that folder — pick the install folder.";
-    }
-    await folders.save(found);
-    // Drop ?assets=1: reloading with it would just reopen this panel forever.
-    setTimeout(() => location.replace(location.pathname), 700);
-    return `Found ${[...found.keys()].join(" + ")}. Starting…`;
-  },
-});
-
-if (gate.blocked) {
-  gate.show();
-  report("Unsupported browser", "see what this page needs");
-}
-
 // Share the running host with players on the same network: they stream the archives from here.
 el("share").addEventListener("click", async () => {
   const button = el("share");
@@ -180,83 +159,8 @@ el("share").addEventListener("click", async () => {
 // before any engine bootstrapping gets a chance to sit in front of it.
 if (query.get("assets") === "1") gate.show();
 
-/* ------------------------------------------------------------- letterboxing */
-// JS owns the fit: the engine controls the canvas backing size, which CSS max-% cannot contain.
-function fitCanvas(): void {
-  const fullscreen = document.fullscreenElement === frame;
-  // Cap by the viewport too: a grid track can still report more than the window during layout.
-  const availableWidth = Math.min(fullscreen ? innerWidth : stage.clientWidth, innerWidth) - 16;
-  const availableHeight = Math.min(fullscreen ? innerHeight : stage.clientHeight, innerHeight) - 16;
-  const scale = Math.min(availableWidth / (canvas.width || 1), availableHeight / (canvas.height || 1));
-  canvas.style.width = `${Math.max(1, Math.floor((canvas.width || 1) * scale))}px`;
-  canvas.style.height = `${Math.max(1, Math.floor((canvas.height || 1) * scale))}px`;
-}
-new ResizeObserver(fitCanvas).observe(stage);
-new MutationObserver(fitCanvas).observe(canvas, { attributes: true, attributeFilter: ["width", "height"] });
-addEventListener("resize", fitCanvas);
-document.addEventListener("fullscreenchange", fitCanvas);
-
-// Fullscreen the frame, not the canvas: the drawn cursor overlay must stay inside the fullscreened subtree.
-el("fullscreen").addEventListener("click", () => void frame.requestFullscreen().catch(() => {}));
-
-/* ------------------------------------------------------------------ cursor */
-let overlaySource = "";
-
-function drawLockedCursor(): void {
-  if (document.pointerLockElement !== canvas) return;
-  const x = module?._GeneralsXMouseX?.() ?? -1;
-  const y = module?._GeneralsXMouseY?.() ?? -1;
-  const match = /url\(\s*"?([^")]+)"?\s*\)(?:\s+(\d+)\s+(\d+))?/.exec(canvas.style.cursor);
-  if (match && x >= 0 && y >= 0) {
-    const [, url, hotX = "0", hotY = "0"] = match;
-    if (url !== overlaySource) {
-      overlaySource = url as string;
-      cursorOverlay.src = url as string;
-    }
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = rect.width / (canvas.width || 1);
-    const scaleY = rect.height / (canvas.height || 1);
-    cursorOverlay.hidden = false;
-    cursorOverlay.style.transform =
-      `translate(${rect.left + x * scaleX - Number(hotX)}px, ${rect.top + y * scaleY - Number(hotY)}px)`;
-  } else {
-    cursorOverlay.hidden = true;
-  }
-  requestAnimationFrame(drawLockedCursor);
-}
-
-document.addEventListener("pointerlockchange", () => {
-  const locked = document.pointerLockElement === canvas;
-  canvas.classList.toggle("ogx-pointer-locked", locked);
-  if (locked) drawLockedCursor();
-  else cursorOverlay.hidden = true;
-  // The browser consumes ESC as the pointer-lock exit, so the engine never sees the key. When the
-  // lock drops while the page still has focus, that WAS an ESC press — hand it to the game so its
-  // own original pause menu opens. Unlocks from alt-tab/blur skip this (hasFocus is false there).
-  if (!locked && document.hasFocus() && !document.hidden && frame.dataset.ready === "true") {
-    for (const type of ["keydown", "keyup"] as const) {
-      canvas.dispatchEvent(new KeyboardEvent(type, { key: "Escape", code: "Escape", bubbles: true }));
-    }
-  }
-});
-canvas.addEventListener("contextmenu", (event) => event.preventDefault());
-canvas.addEventListener("pointerdown", () => {
-  canvas.focus();
-  if (!document.pointerLockElement && frame.dataset.ready === "true") canvas.requestPointerLock();
-});
-
 // No auto-pause: the simulation keeps running whether or not the page has focus — losing focus
 // must never stop a match (a hidden tab's frames are driven by the pump worker below).
-
-/* ------------------------------------------------------------------- sound */
-function setSoundMuted(muted: boolean): void {
-  soundMuted = muted;
-  localStorage.setItem("generalsX.soundMuted", muted ? "1" : "0");
-  module?._GeneralsXSetAudioMuted?.(muted ? 1 : 0);
-  el("sound").textContent = muted ? "Sound off" : "Sound on";
-}
-el("sound").addEventListener("click", () => setSoundMuted(!soundMuted));
-el("sound").textContent = soundMuted ? "Sound off" : "Sound on";
 
 /** WebAudio context states, for the console and the runtime log — silence debugging needs this. */
 function audioContextStates(): string {
@@ -267,10 +171,10 @@ function audioContextStates(): string {
 initConsole({
   module: () => module,
   mute: () => {
-    setSoundMuted(!soundMuted);
-    return soundMuted ? "Sound muted." : "Sound on.";
+    sound.set(!sound.muted);
+    return sound.muted ? "Sound muted." : "Sound on.";
   },
-  status: () => `status=${status.textContent} audio=${audioContextStates()} muted=${soundMuted}`
+  status: () => `status=${statusLine.textContent} audio=${audioContextStates()} muted=${sound.muted}`
     + ` logic=${module?._GeneralsXLogicFrame?.() ?? 0}`
     + ` cursor=${document.pointerLockElement ? "captured" : "free"}`,
   sync: () => guestBulk
@@ -567,7 +471,7 @@ const config: Record<string, unknown> = {
 config.onRuntimeInitialized = function (this: EmscriptenModule) {
   module = this;
   (globalThis as unknown as { __gx: EmscriptenModule }).__gx = this;
-  frame.dataset.ready = "true";
+  el("frame").dataset.ready = "true";
   // Every client needs its own LAN name: the lobby hides games hosted by a player with the same
   // name, so two tabs called "emscripten" can never see each other. sessionStorage is per tab, so
   // two tabs on one machine get different names and can play each other.
@@ -581,7 +485,8 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
   }, 500);
   setStatus("Running");
   fitCanvas();
-  if (soundMuted) {
+  if (sound.muted) {
+    // The export only answers once the engine's audio device exists, which is after this fires.
     const applySavedMute = setInterval(() => {
       if (module?._GeneralsXSetAudioMuted?.(1)) clearInterval(applySavedMute);
     }, 500);
@@ -590,7 +495,7 @@ config.onRuntimeInitialized = function (this: EmscriptenModule) {
 
 // A browser that cannot run the game must not pull a gigabyte to find that out — the gate is
 // already up saying which requirement is missing.
-if (!allSupported(capabilities)) throw new Error("unsupported browser");
+if (!allSupported(shell.capabilities)) throw new Error("unsupported browser");
 
 setStatus("Loading…");
 const factory = (await import(/* @vite-ignore */ "/GeneralsXZH.js")).default as ModuleFactory;

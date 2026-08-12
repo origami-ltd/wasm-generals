@@ -1,6 +1,6 @@
 import "./style.css";
 import { initConsole } from "./console";
-import { ArchiveStreamer, allSupported } from "@wasm/runtime";
+import { ArchiveStreamer, allSupported, mountPersistent } from "@wasm/runtime";
 import { createShell, el, query } from "@wasm/shell";
 import { findArchiveDirs, folders, hasSavedFolders, loadManifest, localArchives } from "./archives";
 import { STEAM_HELP } from "./ui";
@@ -439,9 +439,11 @@ const config: Record<string, unknown> = {
     (instance: EmscriptenModule) => {
       instance.addRunDependency("gx-userdata");
       const FS = instance.FS;
-      FS.mkdirTree(USER_DATA_PATH);
-      FS.mount(instance.IDBFS, {}, USER_DATA_PATH);
-      FS.syncfs(true, () => {
+      // Through the shared mount rather than FS.mount + syncfs directly: on a browser where IDBFS
+      // throws (Safari), the callback below never ran, the run dependency was never dropped, and
+      // the engine sat waiting for a user data directory that was never coming. Vice City hit
+      // exactly this and the guard belongs in one place.
+      void mountPersistent(instance, USER_DATA_PATH, log).then(() => {
         const optionsPath = `${USER_DATA_PATH}/Options.ini`;
         let hasOptions = true;
         try {

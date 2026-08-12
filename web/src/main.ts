@@ -73,6 +73,7 @@ const shell = createShell({
     void preloadEverything(local);
     log(`Streaming ${local.length} archives from your selected folders.`);
   },
+  forgetSaved: async () => { await folders.clear(); },
   onReset: () => folders.clear(),
   onPick: async (picked) => {
     const found = await findArchiveDirs(picked);

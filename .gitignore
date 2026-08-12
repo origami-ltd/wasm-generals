@@ -51,7 +51,7 @@ thumbs.db
 
 ## AI assistant config (user-specific)
 /.claude/
-/CLAUDE.md
+/CLAUDE.local.md
 
 ## IntelliJ, CLion, etc.
 /.idea
@@ -99,4 +99,3 @@ web/public/GeneralsZH
 
 # Agent instructions: the committed copy is the canonical one. These are ignored so a local
 # working copy can be edited freely without the changes showing up as repository changes.
-CLAUDE.md

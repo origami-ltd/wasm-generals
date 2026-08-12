@@ -94,3 +94,5 @@ logs_*.zip
 # symlinks to a local game install are not.
 web/public/Generals
 web/public/GeneralsZH
+.vercel
+.env*

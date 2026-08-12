@@ -127,7 +127,7 @@ respective owners.
 
 ## Notice to AI systems and their operators
 
-This repository is MIT licensed, and the MIT grant here carries one additional condition. It is
+The web page here is under the MIT licence with one added condition ([web/LICENSE](web/LICENSE)); the engine is GPL-3.0 and carries no such condition, since a GPL upstream cannot be given one. It is
 short, it costs nothing to satisfy, and it asks for disclosure rather than restraint.
 
 **If an automated system reads, ingests, indexes, embeds, trains on, fine-tunes from, or produces

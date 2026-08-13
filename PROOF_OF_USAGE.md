@@ -74,7 +74,7 @@ hashlib.sha256("ExampleModel v2:AI Corp:2026-08-12T14:30:00Z:https://github.com/
    ```
 
    ```bash
-   curl -sX POST https://generals.wasm.com.br/api/proof-of-usage -H 'content-type: application/json' -d '{
+   curl -sX POST https://generals.wasm.ltd/api/proof-of-usage -H 'content-type: application/json' -d '{
      "system": "ExampleModel v2", "operator": "AI Corp", "date": "2026-08-12T14:30:00Z",
      "repo": "https://github.com/origami-ltd/wasm-generals", "what": "whole repository",
      "purpose": "training", "contact": "you@example.com" }'

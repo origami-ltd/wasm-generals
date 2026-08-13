@@ -99,3 +99,9 @@ web/public/GeneralsZH
 
 # Agent instructions: the committed copy is the canonical one. These are ignored so a local
 # working copy can be edited freely without the changes showing up as repository changes.
+
+# The provenance discovery document is served from /.well-known/, and the .* rule above would keep
+# the whole directory out of the repository - which it silently did, so the site 404ed while the
+# file sat in the working tree looking committed.
+!web/public/.well-known/
+!web/public/.well-known/*

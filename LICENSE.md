@@ -6,7 +6,8 @@ terms. Mine first, since it is the part I can license:
 
 1. THE WEB PAGE - everything under web/ - is mine: TypeScript, styles and markup that load a
    WebAssembly binary at runtime. It contains no game code and links against none. It is offered
-   under the MIT licence with the proof-of-usage condition, in full below and in web/LICENSE.md.
+   under MIT-PoU - the MIT licence with the proof-of-usage
+   condition - in full below and in web/LICENSE.md.
 
 2. THE ENGINE - everything else - is not mine to license. It is GPL-3.0, inherited from Electronic
    Arts' official source release of Command & Conquer Generals and Zero Hour (GPL-3.0 with
